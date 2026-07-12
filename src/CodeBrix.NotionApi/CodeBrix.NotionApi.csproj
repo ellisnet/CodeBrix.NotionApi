@@ -61,14 +61,14 @@
     <Product>CodeBrix.NotionApi</Product>
     <Title>CodeBrix.NotionApi</Title>
     <Authors>Jeremy Ellis</Authors>
-    <Description>A .NET client library for the Notion API — a CodeBrix vendored replacement for the Notion.Net package, rebuilt on System.Text.Json with no Newtonsoft.Json or JsonSubTypes dependencies. Ships with the CodeBrix.JsonPolymorphism assembly, which provides discriminator-based polymorphic deserialization with fallback types on top of System.Text.Json.</Description>
+    <Description>A .NET client library for the Notion API — built on top of System.Text.Json.</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/ellisnet/CodeBrix.NotionApi</PackageProjectUrl>
     <RepositoryUrl>https://github.com/ellisnet/CodeBrix.NotionApi</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageIcon>icon-codebrix-128.png</PackageIcon>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <Copyright>Copyright (c) Vedant Koditkar and the notion-sdk-net contributors. Copyright (c) 2026 Jeremy Ellis and contributors</Copyright>
+    <Copyright>Copyright (c) 2026 Jeremy Ellis and contributors</Copyright>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
     <IsPackable>true</IsPackable>
