@@ -88,6 +88,100 @@ plus an internal RuntimeTypeConverterFactory that serializes
 abstract/interface-declared values via their runtime type — matching
 Newtonsoft.Json's behavior that the upstream code was designed around).
 
+AUTHORING HELPERS (start here for building pages)
+------------------------------------------------------------------------
+For the common "build a page from local content" workflow, prefer the
+authoring helpers in the CodeBrix.NotionApi namespace over hand-writing
+request objects. They smooth over Notion's hard limits and the raw SDK's
+nested-`.Info` ceremony, and they are the recommended path. Three types:
+
+  NotionText   — rich-text runs.
+    NotionText.Run(text, bold:, italic:, code:, linkUrl:)  -> one run
+    NotionText.Split(text, ...)      -> runs, auto-split at the 2,000-char
+                                        per-run limit on WORD boundaries
+    NotionText.Plain(text) / PlainBase(text)  -> unannotated run list
+    (Notion REJECTS any rich-text run > 2000 chars; Split handles it.)
+
+  NotionBlocks — terse block-request factories (no nested `.Info`):
+    Paragraph, Heading2, Heading3, Callout(text, emoji), Quote, Bullet,
+    Numbered, Toggle(summary, children), Divider, Table(rows, header),
+    TableRow, ImageExternal(url), ImageUpload(fileUploadId).
+    The string overloads treat their argument as LITERAL text (no markdown
+    is parsed) — build emphasis explicitly with NotionText.Run.
+
+  NotionAuthoringExtensions — INotionClient extension methods:
+    CreateChildPageAsync(parentPageId, title)   create a titled sub-page
+    AppendChildrenBatchedAsync(parentId, blocks, throttleMs:)
+        appends ANY number of blocks, auto-splitting into requests of <=100
+        (Notion's per-request cap) in order, with optional rate-limit pacing
+    UploadFileAsync(filePath, contentType:)   single-part file upload
+        (Create+Send in one call) -> returns the file_upload id for
+        NotionBlocks.ImageUpload; content type inferred from the extension
+    ArchivePageAsync(pageId)      trash a page (in_trash = true)
+    RetrieveAllChildrenAsync(blockId)   read every child block, following
+        pagination to the end
+    GuessContentType(path)        MIME type from a file extension
+
+Blessed end-to-end pattern (create with a title, then append the body):
+
+  var page = await client.CreateChildPageAsync(parentPageId, "My Page");
+
+  var uploadId = await client.UploadFileAsync("/path/diagram.png");
+  var blocks = new List<IBlockObjectRequest>
+  {
+      NotionBlocks.Heading2("Introduction"),
+      NotionBlocks.Paragraph("Body text ..."),
+      NotionBlocks.Paragraph(new List<RichTextBase>
+      {
+          NotionText.Run("A "), NotionText.Run("bold", bold: true),
+          NotionText.Run(" word."),
+      }),
+      NotionBlocks.ImageUpload(uploadId, NotionText.PlainBase("A caption")),
+      NotionBlocks.Callout("Heads up!", "\U0001F680"),
+  };
+  await client.AppendChildrenBatchedAsync(page.Id, blocks);
+
+For whole-document MARKDOWN (rather than block-by-block construction),
+Notion has native Notion-flavored-markdown ingestion — see
+PagesCreateParameters.Markdown / PagesCreateParametersBuilder.SetMarkdown,
+Pages.UpdateMarkdownAsync, and Pages.RetrieveAsMarkdownAsync — which can
+be simpler than building blocks when you don't need fine interleaving.
+
+PAGE & BLOCK ORDERING (positional control) — a Notion gotcha
+------------------------------------------------------------------------
+Notion keeps a page's children (sub-pages AND content blocks) in
+INSERTION order, and its API offers NO operation to reposition an
+existing child in place. This is a Notion API constraint, not a
+limitation of this library — the library models the endpoints faithfully.
+
+What you CANNOT do:
+  * Reorder existing sibling pages/blocks. There is no "reorder" or
+    "move block" endpoint.
+  * Reposition with Move. Pages.MoveAsync (POST /v1/pages/{id}/move,
+    MovePageRequest) accepts ONLY a new `parent` (MovePageParent) — the
+    Notion endpoint has no `position` parameter. It re-parents a page; it
+    cannot change a page's order under the same parent. (MovePageBody-
+    Parameters exposes only Parent for exactly this reason.)
+
+What you CAN do — positional control exists only at INSERT time:
+  * Create a page at a chosen slot. Set PagesCreateParameters.Position to
+    a PagePosition subtype:
+        new PageStartPosition()                      // first under parent
+        new PageEndPosition()                        // last (also the default)
+        new AfterBlockPagePosition {                 // right after a sibling
+            AfterBlock = new AfterBlockReference { Id = siblingBlockId } }
+  * Append blocks at a chosen slot. Notion added a `position` object
+    (after_block / start / end) in API version 2026-03-11. This library
+    currently pins NotionVersion "2025-09-03", whose append endpoint uses
+    the flat BlockAppendChildrenRequest.After (a block id to append
+    after); with no After set, appended blocks go to the end.
+
+Consequence / recipe: because there is no in-place reorder, get ordering
+right by CREATING in the desired order (optionally via Position). To fix
+the order of pages that already exist, archive them
+(Pages.UpdateAsync with PagesUpdateParameters.InTrash = true) and
+recreate them in sequence; there is no cheaper reorder path.
+
 CORE API REFERENCE — CodeBrix.JsonPolymorphism
 ------------------------------------------------------------------------
 Declares discriminator-driven polymorphic deserialization on a base

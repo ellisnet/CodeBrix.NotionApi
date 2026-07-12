@@ -488,9 +488,9 @@ public class PageClientTests : IntegrationTestBase, IAsyncLifetime
         // Arrange
         var pageRequest = PagesCreateParametersBuilder
             .Create(new PageParentRequest { PageId = _page.Id })
-            .AddPageContent(new ParagraphBlock
+            .AddPageContent(new ParagraphBlockRequest
             {
-                Paragraph = new ParagraphBlock.Info
+                Paragraph = new ParagraphBlockRequest.Info
                 {
                     RichText = new List<RichTextBase>
                     {

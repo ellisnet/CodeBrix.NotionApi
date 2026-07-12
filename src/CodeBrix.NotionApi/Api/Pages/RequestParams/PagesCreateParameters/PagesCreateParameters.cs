@@ -12,7 +12,7 @@ public class PagesCreateParameters : IPagesCreateBodyParameters, IPagesCreateQue
     public IDictionary<string, PropertyValue> Properties { get; set; }
 
     [JsonPropertyName("children")]
-    public IList<IBlock> Children { get; set; }
+    public IEnumerable<IBlockObjectRequest> Children { get; set; }
 
     [JsonPropertyName("icon")]
     public IPageIconRequest Icon { get; set; }

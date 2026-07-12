@@ -12,7 +12,7 @@ public interface IPagesCreateBodyParameters
     IDictionary<string, PropertyValue> Properties { get; set; }
 
     [JsonPropertyName("children")]
-    IList<IBlock> Children { get; set; }
+    IEnumerable<IBlockObjectRequest> Children { get; set; }
 
     [JsonPropertyName("icon")]
     IPageIconRequest Icon { get; set; }

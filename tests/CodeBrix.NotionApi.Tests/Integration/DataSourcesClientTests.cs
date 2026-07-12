@@ -99,7 +99,7 @@ public class DataSourcesClientTests : IntegrationTestBase, IAsyncLifetime
         var dataSource = await Client.DataSources.CreateAsync(request, cancellationToken: TestContext.Current.CancellationToken);
         var page = await Client.Pages.CreateAsync(new PagesCreateParameters
         {
-            Children = new List<IBlock>(),
+            Children = new List<IBlockObjectRequest>(),
             Parent = new DataSourceParentRequest
             {
                 DataSourceId = dataSource.Id
@@ -111,7 +111,7 @@ public class DataSourcesClientTests : IntegrationTestBase, IAsyncLifetime
         }, cancellationToken: TestContext.Current.CancellationToken);
         var otherPage = await Client.Pages.CreateAsync(new PagesCreateParameters
         {
-            Children = new List<IBlock>(),
+            Children = new List<IBlockObjectRequest>(),
             Parent = new DataSourceParentRequest
             {
                 DataSourceId = dataSource.Id

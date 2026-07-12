@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 
 namespace CodeBrix.NotionApi; //was previously: Notion.Client;
 
-public class ParagraphBlockRequest : Block, IColumnChildrenBlockRequest, INonColumnBlockRequest
+public class ParagraphBlockRequest : BlockObjectRequest, IColumnChildrenBlockRequest, INonColumnBlockRequest
 {
     [JsonPropertyName("paragraph")]
     public Info Paragraph { get; set; }

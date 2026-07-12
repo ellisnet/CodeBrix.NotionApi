@@ -6,7 +6,7 @@ namespace CodeBrix.NotionApi; //was previously: Notion.Client;
 [SuppressMessage("ReSharper", "UnusedMember.Global")]
 public class PagesCreateParametersBuilder
 {
-    private readonly IList<IBlock> _children = new List<IBlock>();
+    private readonly IList<IBlockObjectRequest> _children = new List<IBlockObjectRequest>();
     private readonly Dictionary<string, PropertyValue> _properties = new();
     private IPageCoverRequest _cover;
     private IPageIconRequest _icon;
@@ -31,7 +31,7 @@ public class PagesCreateParametersBuilder
         return this;
     }
 
-    public PagesCreateParametersBuilder AddPageContent(IBlock block)
+    public PagesCreateParametersBuilder AddPageContent(IBlockObjectRequest block)
     {
         _children.Add(block);
 
