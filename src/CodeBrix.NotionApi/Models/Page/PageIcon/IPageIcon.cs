@@ -5,7 +5,6 @@ namespace CodeBrix.NotionApi; //was previously: Notion.Client;
 
 [JsonConverter(typeof(FallbackTypeConverterFactory))]
 [JsonDiscriminator("type")]
-[JsonKnownType(typeof(NativeIconObject), "icon")]
 [JsonKnownType(typeof(EmojiPageIcon), PageIconTypes.Emoji)]
 [JsonKnownType(typeof(CustomEmojiPageIcon), PageIconTypes.CustomEmoji)]
 [JsonKnownType(typeof(FilePageIcon), PageIconTypes.File)]
