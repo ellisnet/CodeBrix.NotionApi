@@ -1,0 +1,15 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path="AGENT-README.txt" />
+    <File Path="icon-codebrix-128.png" />
+    <File Path="LICENSE" />
+    <File Path="README.md" />
+    <File Path="THIRD-PARTY-NOTICES.txt" />
+  </Folder>
+  <Folder Name="/Tests/">
+    <Project Path="tests/CodeBrix.NotionApi.Tests/CodeBrix.NotionApi.Tests.csproj" />
+    <Project Path="tests/CodeBrix.JsonPolymorphism.Tests/CodeBrix.JsonPolymorphism.Tests.csproj" />
+  </Folder>
+  <Project Path="src/CodeBrix.NotionApi/CodeBrix.NotionApi.csproj" />
+  <Project Path="src/CodeBrix.JsonPolymorphism/CodeBrix.JsonPolymorphism.csproj" />
+</Solution>

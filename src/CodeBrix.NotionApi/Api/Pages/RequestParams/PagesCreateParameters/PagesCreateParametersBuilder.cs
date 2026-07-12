@@ -1,0 +1,90 @@
+using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
+
+namespace CodeBrix.NotionApi; //was previously: Notion.Client;
+
+[SuppressMessage("ReSharper", "UnusedMember.Global")]
+public class PagesCreateParametersBuilder
+{
+    private readonly IList<IBlock> _children = new List<IBlock>();
+    private readonly Dictionary<string, PropertyValue> _properties = new();
+    private IPageCoverRequest _cover;
+    private IPageIconRequest _icon;
+    private IParentOfPageRequest _parent;
+    private string _markdown;
+    private PageTemplate _template;
+    private PagePosition _position;
+
+    private PagesCreateParametersBuilder()
+    {
+    }
+
+    public static PagesCreateParametersBuilder Create(IParentOfPageRequest parent)
+    {
+        return new PagesCreateParametersBuilder { _parent = parent };
+    }
+
+    public PagesCreateParametersBuilder AddProperty(string nameOrId, PropertyValue value)
+    {
+        _properties[nameOrId] = value;
+
+        return this;
+    }
+
+    public PagesCreateParametersBuilder AddPageContent(IBlock block)
+    {
+        _children.Add(block);
+
+        return this;
+    }
+
+    public PagesCreateParametersBuilder SetIcon(IPageIconRequest pageIcon)
+    {
+        _icon = pageIcon;
+
+        return this;
+    }
+
+    public PagesCreateParametersBuilder SetCover(IPageCoverRequest pageCover)
+    {
+        _cover = pageCover;
+
+        return this;
+    }
+
+    public PagesCreateParametersBuilder SetMarkdown(string markdown)
+    {
+        _markdown = markdown;
+
+        return this;
+    }
+
+    public PagesCreateParametersBuilder SetTemplate(PageTemplate template)
+    {
+        _template = template;
+
+        return this;
+    }
+
+    public PagesCreateParametersBuilder SetPosition(PagePosition position)
+    {
+        _position = position;
+
+        return this;
+    }
+
+    public PagesCreateParameters Build()
+    {
+        return new PagesCreateParameters
+        {
+            Parent = _parent,
+            Properties = _properties,
+            Children = _children.Count > 0 ? _children : null,
+            Icon = _icon,
+            Cover = _cover,
+            Markdown = _markdown,
+            Template = _template,
+            Position = _position
+        };
+    }
+}
