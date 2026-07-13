@@ -25,7 +25,7 @@ public abstract class IntegrationTestBase
             RetryPolicy = new DefaultRetryPolicy()
         };
 
-        Client = NotionClientFactory.Create(options);
+        Client = NotionClientFactory.Instance.Create(options);
 
         ParentPageId = GetEnvironmentVariableRequired("NOTION_PARENT_PAGE_ID");
         ParentDatabaseId = GetEnvironmentVariableRequired("NOTION_PARENT_DATABASE_ID");

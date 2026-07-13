@@ -147,4 +147,9 @@ public sealed class RecordingRestClient : IRestClient
 
     private T GetResponse<T>()
         => _responses.TryGetValue(typeof(T), out var response) ? (T)response : default;
+
+    // No owned resources; the fake never creates an HttpClient. Present only to satisfy IRestClient : IDisposable.
+    public void Dispose()
+    {
+    }
 }

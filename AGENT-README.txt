@@ -51,13 +51,20 @@ KEY NAMESPACES
 
 CORE API REFERENCE — CodeBrix.NotionApi
 ------------------------------------------------------------------------
-Entry point:
+Entry point (non-DI). NotionClientFactory implements INotionClientFactory;
+use the shared NotionClientFactory.Instance, and DISPOSE the client you get
+(INotionClient is IDisposable) — a `using` is the simplest way:
 
-  var client = NotionClientFactory.Create(new ClientOptions
+  using var client = NotionClientFactory.Instance.Create(new ClientOptions
   {
       AuthToken = "ntn_your_integration_token",
       // BaseUrl, NotionVersion, RetryPolicy, HttpClient are optional
   });
+
+INotionClient (and the RestClient it wraps) is IDisposable. Disposing it
+releases ONLY an HttpClient the library created and owns internally; a client
+you supplied via ClientOptions.HttpClient, or one drawn from an
+IHttpClientFactory, is left for its owner to manage.
 
 INotionClient exposes one sub-client per Notion endpoint group:
   client.Users            IUsersClient          (MeAsync, RetrieveAsync, ListAsync)
@@ -71,9 +78,52 @@ INotionClient exposes one sub-client per Notion endpoint group:
   client.AuthenticationClient IAuthenticationClient (OAuth token exchange/introspection/refresh)
   client.RestClient       IRestClient           (low-level HTTP access)
 
-Dependency injection: services.AddNotionClient(options => { ... })
-registers INotionClient as a singleton with an IHttpClientFactory-managed
-HttpClient (ServiceCollectionExtensions).
+DEPENDENCY INJECTION — the correct setup
+------------------------------------------------------------------------
+THE RECOMMENDED registration is AddNotionClientFactory: it registers
+INotionClientFactory as a singleton backed by an IHttpClientFactory-managed
+named HttpClient. Inject INotionClientFactory, then create (and dispose) an
+INotionClient per unit of work — the HttpClient is drawn from the pooled,
+rotated IHttpClientFactory, so per-scope creation is cheap and safe:
+
+  // Startup / registration:
+  services.AddNotionClientFactory();
+
+  // Consuming class — inject INotionClientFactory:
+  public sealed class MyNotionWorker(INotionClientFactory notionFactory)
+  {
+      public async Task DoWorkAsync(string authToken)
+      {
+          using var notion = notionFactory.Create(new ClientOptions
+          {
+              AuthToken = authToken,
+          });
+
+          var me = await notion.Users.MeAsync();
+          // ... use `notion` for as many calls as this unit of work needs ...
+      }   // `notion` is disposed here; the pooled HttpClient is left alone.
+  }
+
+Every INotionClient/RestClient the factory creates obtains its HttpClient
+from the one DI-configured IHttpClientFactory. Because it is resolved PER
+REQUEST, handler rotation (stale-DNS / socket-exhaustion protection) is
+preserved — never cache a single CreateClient() result for the app lifetime.
+When you control construction directly, prefer the
+NotionClientFactory(IHttpClientFactory) constructor; SetHttpClientFactory
+exists for configuring the shared NotionClientFactory.Instance and is a
+set-once, thread-safe operation.
+
+Alternative — services.AddNotionClient(options => { ... }) registers a
+single app-wide INotionClient as a singleton (also IHttpClientFactory-backed
+and resolved per request). Use it when one shared client is all you need and
+you do not want to create clients per unit of work; the container disposes it
+at shutdown, so do NOT dispose an injected INotionClient yourself here.
+
+DO NOT create a NotionClient per request WITHOUT an IHttpClientFactory (no
+ClientOptions.HttpClient and no factory): each one builds and owns a fresh
+HttpClient + connection pool, and creating many of them leaks sockets. Either
+reuse one long-lived client, or back creation with an IHttpClientFactory as
+shown above.
 
 Error model: non-success responses throw NotionApiException (StatusCode,
 NotionAPIErrorCode, Message); HTTP 429 throws NotionApiRateLimitException

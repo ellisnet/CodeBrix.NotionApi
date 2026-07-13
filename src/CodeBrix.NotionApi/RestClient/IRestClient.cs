@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Text.Json;
 using System.Threading;
@@ -5,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace CodeBrix.NotionApi; //was previously: Notion.Client;
 
-public interface IRestClient
+public interface IRestClient : IDisposable
 {
     Task<T> GetAsync<T>(
         string uri,

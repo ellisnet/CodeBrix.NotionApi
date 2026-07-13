@@ -23,7 +23,7 @@ public class RetryPolicyTests : ApiTestBase
             HttpClient = new System.Net.Http.HttpClient(Server.CreateHandler()),
         };
 
-        return NotionClientFactory.Create(options);
+        return NotionClientFactory.Instance.Create(options);
     }
 
     // Very short delays so unit tests don't become slow.

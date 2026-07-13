@@ -26,7 +26,7 @@ public class HttpClientOptionsTests : IntegrationTestBase
             HttpClient = httpClient
         };
 
-        var client = NotionClientFactory.Create(options);
+        var client = NotionClientFactory.Instance.Create(options);
 
         var user = await client.Users.MeAsync(cancellationToken: TestContext.Current.CancellationToken);
 
@@ -44,7 +44,7 @@ public class HttpClientOptionsTests : IntegrationTestBase
             RetryPolicy = new DefaultRetryPolicy(maxRetries: 2)
         };
 
-        var client = NotionClientFactory.Create(options);
+        var client = NotionClientFactory.Instance.Create(options);
 
         var user = await client.Users.MeAsync(cancellationToken: TestContext.Current.CancellationToken);
 
@@ -66,7 +66,7 @@ public class HttpClientOptionsTests : IntegrationTestBase
             RetryPolicy = new DefaultRetryPolicy(maxRetries: 2)
         };
 
-        var client = NotionClientFactory.Create(options);
+        var client = NotionClientFactory.Instance.Create(options);
 
         var user = await client.Users.MeAsync(cancellationToken: TestContext.Current.CancellationToken);
 

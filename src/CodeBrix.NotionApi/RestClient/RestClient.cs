@@ -23,41 +23,100 @@ public class RestClient : IRestClient
     };
 
     private readonly HttpClient _httpClient;
+    private readonly IHttpClientFactory _httpClientFactory;
+    private readonly string _httpClientName;
+    private readonly Uri _baseUri;
+    private readonly bool _ownsHttpClient;
     private readonly IRetryPolicy _retryPolicy;
+    private bool _disposed;
 
+    /// <summary>
+    /// Creates a <see cref="RestClient"/> that uses the <see cref="HttpClient"/> supplied on
+    /// <paramref name="options"/> when <see cref="ClientOptions.HttpClient"/> is set, or otherwise
+    /// builds and owns a default one.
+    /// </summary>
     public RestClient(ClientOptions options)
+        : this(options, null)
     {
-        _options = MergeOptions(options);
-        _retryPolicy = options.RetryPolicy;
-        _httpClient = ResolveHttpClient(options.HttpClient, _options.BaseUrl);
     }
 
     /// <summary>
-    /// Returns the <see cref="HttpClient"/> to use for all requests.
+    /// Creates a <see cref="RestClient"/> that obtains its <see cref="HttpClient"/> from
+    /// <paramref name="httpClientFactory"/> — resolved fresh per request so
+    /// <see cref="IHttpClientFactory"/> handler rotation is preserved.
     /// <para>
-    /// When <paramref name="provided"/> is supplied it is used as-is (only <c>BaseAddress</c> is set
-    /// if absent). The caller owns the lifetime of the provided client.
-    /// </para>
-    /// <para>
-    /// When <paramref name="provided"/> is <c>null</c>, a default pipeline is built:
-    /// <c>LoggingHandler → HttpClientHandler</c>.
+    /// Resolution precedence: an explicit <see cref="ClientOptions.HttpClient"/> wins; otherwise
+    /// <paramref name="httpClientFactory"/> is used when non-null; otherwise the client builds and owns
+    /// a default <see cref="HttpClient"/>. Only the last case is disposed by this instance.
     /// </para>
     /// </summary>
-    private static HttpClient ResolveHttpClient(HttpClient provided, string baseUrl)
+    public RestClient(ClientOptions options, IHttpClientFactory httpClientFactory)
     {
-        if (provided != null)
+        _options = MergeOptions(options);
+        _retryPolicy = options.RetryPolicy;
+        _baseUri = new Uri(_options.BaseUrl);
+        _httpClientName = Constants.HttpClientName;
+
+        if (options.HttpClient != null)
         {
-            if (provided.BaseAddress == null)
+            // Strategy 1 — caller-supplied client. Used as-is; the caller owns its lifetime.
+            if (options.HttpClient.BaseAddress == null)
             {
-                provided.BaseAddress = new Uri(baseUrl);
+                options.HttpClient.BaseAddress = _baseUri;
             }
 
-            return provided;
+            _httpClient = options.HttpClient;
+            _ownsHttpClient = false;
+        }
+        else if (httpClientFactory != null)
+        {
+            // Strategy 2 — resolve a fresh client from the factory on every request, so we pick up
+            // IHttpClientFactory's periodic handler rotation (stale-DNS / socket-exhaustion safety).
+            // Nothing is cached here, so there is nothing for this instance to dispose.
+            _httpClientFactory = httpClientFactory;
+            _ownsHttpClient = false;
+        }
+        else
+        {
+            // Strategy 3 — no client and no factory supplied: build and own a default client.
+            _httpClient = CreateDefaultHttpClient(_baseUri);
+            _ownsHttpClient = true;
+        }
+    }
+
+    /// <summary>
+    /// Returns the <see cref="HttpClient"/> to use for a single request. When an
+    /// <see cref="IHttpClientFactory"/> was supplied, a fresh client is requested on every call (with
+    /// its <c>BaseAddress</c> set when the named client did not configure one); otherwise the cached
+    /// caller-supplied or internally-owned client is returned.
+    /// </summary>
+    private HttpClient GetHttpClient()
+    {
+        if (_httpClientFactory == null)
+        {
+            return _httpClient;
         }
 
+        var client = _httpClientFactory.CreateClient(_httpClientName);
+
+        if (client.BaseAddress == null)
+        {
+            client.BaseAddress = _baseUri;
+        }
+
+        return client;
+    }
+
+    /// <summary>
+    /// Builds the default request pipeline used when neither a client nor a factory is supplied:
+    /// <c>LoggingHandler → HttpClientHandler</c>. The returned client is owned and disposed by this
+    /// <see cref="RestClient"/>.
+    /// </summary>
+    private static HttpClient CreateDefaultHttpClient(Uri baseUri)
+    {
         var pipeline = new LoggingHandler { InnerHandler = new HttpClientHandler() };
 
-        return new HttpClient(pipeline) { BaseAddress = new Uri(baseUrl) };
+        return new HttpClient(pipeline) { BaseAddress = baseUri };
     }
 
     public async Task<T> GetAsync<T>(
@@ -230,6 +289,10 @@ public class RestClient : IRestClient
     {
         requestUri = AddQueryString(requestUri, queryParams);
 
+        // Resolved once per logical request. With an IHttpClientFactory this asks the factory for a
+        // fresh client (picking up handler rotation); otherwise it returns the cached client.
+        var httpClient = GetHttpClient();
+
         for (var attempt = 0; ; attempt++)
         {
             // HttpRequestMessage is single-use; rebuild it for every attempt.
@@ -245,7 +308,7 @@ public class RestClient : IRestClient
 
             attachContent?.Invoke(httpRequest);
 
-            var response = await _httpClient.SendAsync(httpRequest, cancellationToken);
+            var response = await httpClient.SendAsync(httpRequest, cancellationToken);
 
             if (response.IsSuccessStatusCode)
             {
@@ -289,5 +352,39 @@ public class RestClient : IRestClient
     private static string AddQueryString(string uri, IEnumerable<KeyValuePair<string, string>> queryParams)
     {
         return queryParams == null ? uri : QueryHelpers.AddQueryString(uri, queryParams);
+    }
+
+    /// <summary>
+    /// Disposes the underlying <see cref="HttpClient"/>, but only when this
+    /// <see cref="RestClient"/> created it internally. A client supplied through
+    /// <see cref="ClientOptions.HttpClient"/> — including one from
+    /// <see cref="System.Net.Http.IHttpClientFactory"/> — is owned by the caller and is
+    /// left untouched.
+    /// </summary>
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    /// <summary>
+    /// Releases the resources used by this <see cref="RestClient"/>.
+    /// </summary>
+    /// <param name="disposing">
+    /// <c>true</c> when called from <see cref="Dispose()"/>; <c>false</c> from a finalizer.
+    /// </param>
+    protected virtual void Dispose(bool disposing)
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        if (disposing && _ownsHttpClient)
+        {
+            _httpClient.Dispose();
+        }
+
+        _disposed = true;
     }
 }

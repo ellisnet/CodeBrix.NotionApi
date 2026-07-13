@@ -13,7 +13,7 @@ public class NotionAuthoringExtensionsTests : ApiTestBase
 
     private readonly INotionClient _client;
 
-    public NotionAuthoringExtensionsTests() => _client = NotionClientFactory.Create(ClientOptions);
+    public NotionAuthoringExtensionsTests() => _client = NotionClientFactory.Instance.Create(ClientOptions);
 
     [Fact]
     public void GuessContentType_maps_common_extensions()

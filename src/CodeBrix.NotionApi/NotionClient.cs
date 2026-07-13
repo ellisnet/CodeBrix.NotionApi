@@ -1,9 +1,10 @@
+using System;
 using System.Diagnostics.CodeAnalysis;
 
 namespace CodeBrix.NotionApi; //was previously: Notion.Client;
 
 [SuppressMessage("ReSharper", "UnusedMemberInSuper.Global")]
-public interface INotionClient
+public interface INotionClient : IDisposable
 {
     IAuthenticationClient AuthenticationClient { get; }
 
@@ -71,4 +72,38 @@ public class NotionClient : INotionClient
     public IDataSourcesClient DataSources { get; }
 
     public IRestClient RestClient { get; }
+
+    private bool _disposed;
+
+    /// <summary>
+    /// Disposes this client's underlying <see cref="IRestClient"/>, releasing the
+    /// HttpClient it owns. When the HttpClient was supplied by the caller or managed by
+    /// IHttpClientFactory (the AddNotionClient DI path), it is left untouched.
+    /// </summary>
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    /// <summary>
+    /// Releases the resources used by this <see cref="NotionClient"/>.
+    /// </summary>
+    /// <param name="disposing">
+    /// <c>true</c> when called from <see cref="Dispose()"/>; <c>false</c> from a finalizer.
+    /// </param>
+    protected virtual void Dispose(bool disposing)
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        if (disposing)
+        {
+            RestClient.Dispose();
+        }
+
+        _disposed = true;
+    }
 }
