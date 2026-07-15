@@ -11,19 +11,21 @@ API — a CodeBrix vendored replacement for the Notion.Net NuGet package
 System.Text.Json with no Newtonsoft.Json or JsonSubTypes dependencies.
 Complete open-source licensing, attribution, and provenance information
 for the adapted source is in THIRD-PARTY-NOTICES.txt at the root of this
-repository. This repository builds TWO assemblies that ship together in
-ONE NuGet package:
+repository. This repository builds ONE assembly, shipped in ONE NuGet
+package:
 
-  * CodeBrix.NotionApi         — the Notion API client (ported code)
-  * CodeBrix.JsonPolymorphism  — discriminator-based polymorphic JSON
-    deserialization with fallback types, on top of System.Text.Json
-    (original CodeBrix code; replaces the JsonSubTypes dependency)
+  * CodeBrix.NotionApi  — the Notion API client (ported code), packaged
+    as CodeBrix.NotionApi.MitLicenseForever
 
-The single-package/two-assembly layout is a deliberate, documented
-deviation from the CodeBrix one-csproj-one-nupkg norm:
-CodeBrix.JsonPolymorphism.csproj is IsPackable=false and its .dll/.xml
-are placed into the package's lib/net10.0/ by a
-TargetsForTfmSpecificBuildOutput hook in CodeBrix.NotionApi.csproj.
+Discriminator-based polymorphic JSON deserialization with fallback types
+(which replaces the upstream JsonSubTypes dependency) is NO LONGER built
+in this repository. It now comes from a separate NuGet dependency,
+CodeBrix.Json.Extensions.MitLicenseForever (assembly
+CodeBrix.Json.Extensions, namespace CodeBrix.Json.Extensions.Polymorphism)
+— see "CORE API REFERENCE — polymorphic deserialization" below. The
+former in-repo CodeBrix.JsonPolymorphism library and its .Tests project
+have been removed; this package is now a plain one-csproj-one-nupkg build
+with no TargetsForTfmSpecificBuildOutput assembly-packing hook.
 
 INSTALLATION
 ------------------------------------------------------------------------
@@ -32,10 +34,12 @@ NuGet package:  CodeBrix.NotionApi.MitLicenseForever
   dotnet add package CodeBrix.NotionApi.MitLicenseForever
 
 Note that the package name carries the ".MitLicenseForever" suffix, but
-the namespaces do NOT — code uses "CodeBrix.NotionApi" and
-"CodeBrix.JsonPolymorphism". Target framework: .NET 10.0 or higher.
+the client namespace does NOT — code uses "CodeBrix.NotionApi". Target
+framework: .NET 10.0 or higher.
 
-Package dependencies (all Microsoft-maintained):
+Package dependencies:
+  CodeBrix.Json.Extensions.MitLicenseForever   (polymorphic JSON; see
+      "CORE API REFERENCE — polymorphic deserialization" below)
   Microsoft.Extensions.Logging.Abstractions
   Microsoft.Extensions.DependencyInjection.Abstractions
   Microsoft.Extensions.Http
@@ -45,7 +49,7 @@ KEY NAMESPACES
   using CodeBrix.NotionApi;         // the entire Notion client surface
                                     // (single flat namespace, like the
                                     // upstream Notion.Client namespace)
-  using CodeBrix.JsonPolymorphism;  // JsonDiscriminator / JsonKnownType /
+  using CodeBrix.Json.Extensions.Polymorphism;  // JsonDiscriminator / JsonKnownType /
                                     // JsonFallbackType attributes and the
                                     // FallbackTypeConverter machinery
 
@@ -232,10 +236,14 @@ the order of pages that already exist, archive them
 (Pages.UpdateAsync with PagesUpdateParameters.InTrash = true) and
 recreate them in sequence; there is no cheaper reorder path.
 
-CORE API REFERENCE — CodeBrix.JsonPolymorphism
+CORE API REFERENCE — polymorphic deserialization
+(external dependency: CodeBrix.Json.Extensions.MitLicenseForever)
 ------------------------------------------------------------------------
-Declares discriminator-driven polymorphic deserialization on a base
-class or interface:
+These types live in the CodeBrix.Json.Extensions.Polymorphism namespace,
+provided by the CodeBrix.Json.Extensions.MitLicenseForever NuGet package —
+they are NOT built in this repository. CodeBrix.NotionApi consumes them to
+declare discriminator-driven polymorphic deserialization on a base class
+or interface:
 
   [JsonConverter(typeof(FallbackTypeConverterFactory))]
   [JsonDiscriminator("type")]
@@ -269,14 +277,11 @@ Rules enforced at runtime (InvalidOperationException):
     (two-level dispatch chains are supported)
   * duplicate discriminator values are rejected
 
-NAMING CONSTRAINT: no public type in CodeBrix.JsonPolymorphism may share
-a simple name with any public type in System.Text.Json,
-System.Text.Json.Serialization, or ...Serialization.Metadata, and none
-may start with "JsonPolymorphic" or "JsonDerived". Consumers always have
-those STJ usings next to ours; a collision would force using-aliases
-(CS0104), which is unacceptable. A verification compile that imports
-both namespaces and references every public type by simple name must
-stay CS0104-clean when the public surface changes.
+These types are documented here only because CodeBrix.NotionApi's models
+are annotated with them; their full API reference, design constraints,
+and any other features (e.g. the CodeBrix.Json.Extensions.References
+by-id reference machinery, which CodeBrix.NotionApi does not use) belong
+to the CodeBrix.Json.Extensions package's own documentation.
 
 CODING CONVENTIONS (CodeBrix family)
 ------------------------------------------------------------------------
@@ -292,9 +297,8 @@ CODING CONVENTIONS (CodeBrix family)
   * SITUATIONAL EXCEPTION (AssemblyTools-style): CodeBrix.NotionApi.csproj
     sets GenerateDocumentationFile=false because the upstream
     Notion.Net 5.0.0 surface (500+ types) ships without XML doc comments.
-    CodeBrix.JsonPolymorphism has full XML docs and ships its doc file.
   * Tests: xUnit v3 + SilverAssertions + coverlet.collector;
-    InternalsVisibleTo grants each library's internals to its .Tests
+    InternalsVisibleTo grants the library's internals to its .Tests
     project; cancellable calls in tests pass
     TestContext.Current.CancellationToken
 
@@ -318,9 +322,11 @@ src/CodeBrix.NotionApi/          (flat namespace CodeBrix.NotionApi)
                   [JsonStringEnumMemberName]), HttpResponseMessageExtensions
   Http/           QueryHelpers/HeaderHelpers
 
-src/CodeBrix.JsonPolymorphism/   (namespace CodeBrix.JsonPolymorphism)
-  root:      the three attributes + FallbackTypeConverter(+Factory)
-  Internal/  DiscriminatorMap (cached reflection over the attributes)
+Polymorphic-deserialization support (the [JsonDiscriminator] /
+[JsonKnownType] / [JsonFallbackType] attributes and FallbackTypeConverter
+machinery) is NOT in this repository — it comes from the external
+CodeBrix.Json.Extensions.MitLicenseForever package, namespace
+CodeBrix.Json.Extensions.Polymorphism.
 
 Porting notes (Newtonsoft -> System.Text.Json):
   * [JsonProperty("x")] became [JsonPropertyName("x")]; [EnumMember]
@@ -343,7 +349,6 @@ TESTING
 ------------------------------------------------------------------------
   dotnet test CodeBrix.NotionApi.slnx
 
-tests/CodeBrix.JsonPolymorphism.Tests — converter/attribute unit tests.
 tests/CodeBrix.NotionApi.Tests — ported upstream unit tests. WireMock.Net
 was replaced by the in-repo FakeServer harness (same fluent surface:
 Given/Request.Create()/Response.Create()/scenario states/LogEntries) and

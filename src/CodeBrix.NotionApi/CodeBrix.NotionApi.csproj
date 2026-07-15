@@ -9,8 +9,7 @@
       notion-sdk-net 5.0.0, whose public surface (500+ types, ~1000 public
       members) ships with no upstream XML doc comments. Retrofitting summaries
       on every member is out of scope for v1, so the documentation file is
-      turned off entirely for this project. CodeBrix.JsonPolymorphism (new
-      code, same package) has full XML docs and ships its documentation file.
+      turned off entirely for this project.
     -->
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
   </PropertyGroup>
@@ -72,35 +71,14 @@
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
     <IsPackable>true</IsPackable>
-    <PackageTags>notion;client;api;sdk;json;polymorphism;CodeBrix</PackageTags>
-  </PropertyGroup>
-
-  <!--
-    CodeBrix.JsonPolymorphism is delivered INSIDE this package (single-nupkg,
-    two assemblies) rather than as its own NuGet package. PrivateAssets="all"
-    keeps it out of the package's dependency list, and the
-    TargetsForTfmSpecificBuildOutput hook below places its .dll and .xml into
-    this package's lib/net10.0/ folder.
-  -->
-  <PropertyGroup>
-    <TargetsForTfmSpecificBuildOutput>$(TargetsForTfmSpecificBuildOutput);IncludeJsonPolymorphismInPackage</TargetsForTfmSpecificBuildOutput>
+    <PackageTags>notion;client;api;sdk;CodeBrix</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\CodeBrix.JsonPolymorphism\CodeBrix.JsonPolymorphism.csproj" PrivateAssets="all" />
-  </ItemGroup>
-
-  <Target Name="IncludeJsonPolymorphismInPackage">
-    <ItemGroup>
-      <BuildOutputInPackage Include="$(OutputPath)CodeBrix.JsonPolymorphism.dll" />
-      <BuildOutputInPackage Include="$(OutputPath)CodeBrix.JsonPolymorphism.xml" />
-    </ItemGroup>
-  </Target>
-
-  <ItemGroup>
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.9" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.9" />
-    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.9" />
+    <PackageReference Include="CodeBrix.Json.Extensions.MitLicenseForever" Version="1.0.196.1178" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.10" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.10" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.10" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,6 +1,6 @@
 using System;
 using System.Text.Json.Serialization;
-using CodeBrix.JsonPolymorphism;
+using CodeBrix.Json.Extensions.Polymorphism;
 
 namespace CodeBrix.NotionApi; //was previously: Notion.Client;
 

@@ -1,11 +1,9 @@
 THIRD-PARTY SOFTWARE NOTICES AND INFORMATION
 
 CodeBrix.NotionApi is a .NET client library for the Notion API, delivered
-together with the CodeBrix.JsonPolymorphism library in the single
+as the single CodeBrix.NotionApi assembly in the
 CodeBrix.NotionApi.MitLicenseForever NuGet package. The CodeBrix.NotionApi
-assembly incorporates third-party source code as described below. The
-CodeBrix.JsonPolymorphism assembly is original CodeBrix code and does not
-incorporate any third-party source.
+assembly incorporates third-party source code as described below.
 
 CodeBrix.NotionApi issues HTTP requests to the Notion API
 (https://api.notion.com). Use of that service is governed by Notion's own
@@ -59,8 +57,8 @@ https://github.com/ellisnet/CodeBrix.NotionApi/issues
      - All JSON serialization was migrated from Newtonsoft.Json to
        System.Text.Json; the Newtonsoft.Json dependency was removed.
      - The JsonSubTypes dependency was removed; discriminator-based
-       polymorphic deserialization is provided by the new (original,
-       non-ported) CodeBrix.JsonPolymorphism library instead.
+       polymorphic deserialization is provided by the
+       CodeBrix.Json.Extensions.MitLicenseForever NuGet dependency instead.
      - Namespaces were renamed from Notion.Client[.*] to CodeBrix.NotionApi,
        and block-scoped namespaces were converted to file-scoped.
      - [JsonProperty("x")] attributes became [JsonPropertyName("x")];

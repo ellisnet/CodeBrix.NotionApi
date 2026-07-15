@@ -20,7 +20,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\CodeBrix.NotionApi\CodeBrix.NotionApi.csproj" />
-    <ProjectReference Include="..\..\src\CodeBrix.JsonPolymorphism\CodeBrix.JsonPolymorphism.csproj" />
   </ItemGroup>
 
   <ItemGroup>
