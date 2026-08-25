@@ -21,7 +21,7 @@ Please update your C#/.NET code and projects to the latest LTS version of Micros
 ```csharp
 using CodeBrix.NotionApi;
 
-var client = NotionClientFactory.Create(new ClientOptions
+var client = NotionClientFactory.Instance.Create(new ClientOptions
 {
     AuthToken = "ntn_your_integration_token",
 });
@@ -35,7 +35,14 @@ Console.WriteLine($"Connected as: {me.Name}");
 ```csharp
 using CodeBrix.NotionApi;
 
-var pages = await client.Databases.QueryAsync("database-id", new DatabasesQueryParameters());
+// A database holds one or more data sources; rows are queried per data source.
+var database = await client.Databases.RetrieveAsync("database-id");
+var dataSourceId = database.DataSources.First().DataSourceId;
+
+var pages = await client.DataSources.QueryAsync(new QueryDataSourceRequest
+{
+    DataSourceId = dataSourceId,
+});
 
 foreach (var page in pages.Results)
 {
