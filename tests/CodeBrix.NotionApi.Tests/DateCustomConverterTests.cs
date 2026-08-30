@@ -389,6 +389,99 @@ public class DateCustomConverterTests
     }
 
     [Fact]
+    public void Deserialize_with_positive_offset_preserves_the_offset()
+    {
+        // Arrange - Notion can return a date in the workspace's local timezone
+        const string Json = "{\"start\":\"2026-08-30T09:00:00+05:30\"}";
+
+        // Act
+        var result = JsonSerializer.Deserialize<Date>(Json);
+
+        // Assert - the original offset survives instead of being flattened to UTC
+        Assert.NotNull(result);
+        Assert.Equal(TimeSpan.FromMinutes(330), result.Start.Value.Offset);
+        Assert.Equal(new DateTime(2026, 8, 30, 9, 0, 0), result.Start.Value.DateTime);
+        Assert.True(result.IncludeTime);
+    }
+
+    [Fact]
+    public void Deserialize_with_negative_offset_preserves_the_offset()
+    {
+        // Arrange
+        const string Json = "{\"start\":\"2026-08-30T09:00:00-07:00\"}";
+
+        // Act
+        var result = JsonSerializer.Deserialize<Date>(Json);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(TimeSpan.FromHours(-7), result.Start.Value.Offset);
+        Assert.Equal(new DateTime(2026, 8, 30, 9, 0, 0), result.Start.Value.DateTime);
+    }
+
+    [Fact]
+    public void Deserialize_with_offset_preserves_the_point_in_time()
+    {
+        // Arrange - the same instant expressed two ways
+        const string WithOffset = "{\"start\":\"2026-08-30T09:00:00-07:00\"}";
+        const string AsUtc = "{\"start\":\"2026-08-30T16:00:00Z\"}";
+
+        // Act
+        var offsetResult = JsonSerializer.Deserialize<Date>(WithOffset);
+        var utcResult = JsonSerializer.Deserialize<Date>(AsUtc);
+
+        // Assert
+        Assert.NotNull(offsetResult);
+        Assert.NotNull(utcResult);
+        Assert.Equal(utcResult.Start.Value.UtcDateTime, offsetResult.Start.Value.UtcDateTime);
+    }
+
+    [Fact]
+    public void Deserialize_with_zulu_suffix_yields_zero_offset()
+    {
+        // Arrange
+        const string Json = "{\"start\":\"2026-08-30T16:00:00Z\"}";
+
+        // Act
+        var result = JsonSerializer.Deserialize<Date>(Json);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(TimeSpan.Zero, result.Start.Value.Offset);
+    }
+
+    [Fact]
+    public void Deserialize_without_any_timezone_assumes_utc()
+    {
+        // Arrange - no Z and no +/-HH:mm
+        const string Json = "{\"start\":\"2026-08-30T09:00:00\"}";
+
+        // Act
+        var result = JsonSerializer.Deserialize<Date>(Json);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(TimeSpan.Zero, result.Start.Value.Offset);
+        Assert.Equal(new DateTime(2026, 8, 30, 9, 0, 0), result.Start.Value.UtcDateTime);
+    }
+
+    [Fact]
+    public void Deserialize_date_only_is_not_mistaken_for_a_negative_offset()
+    {
+        // Arrange - the dashes here are date separators, not a timezone designator
+        const string Json = "{\"start\":\"2026-08-30\"}";
+
+        // Act
+        var result = JsonSerializer.Deserialize<Date>(Json);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(TimeSpan.Zero, result.Start.Value.Offset);
+        Assert.Equal(new DateTimeOffset(2026, 8, 30, 0, 0, 0, TimeSpan.Zero), result.Start);
+        Assert.False(result.IncludeTime);
+    }
+
+    [Fact]
     public void Deserialize_with_neither_start_nor_end_time_clears_include_time_flag()
     {
         // Arrange - Both dates are date-only

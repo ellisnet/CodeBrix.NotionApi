@@ -145,6 +145,25 @@ public sealed class RecordingRestClient : IRestClient
         return Task.CompletedTask;
     }
 
+    public Task<T> DeleteAsync<T>(
+        string uri,
+        IDictionary<string, string> queryParams = null,
+        IDictionary<string, string> headers = null,
+        JsonSerializerOptions serializerOptions = null,
+        CancellationToken cancellationToken = default)
+    {
+        Calls.Add(new RecordedCall
+        {
+            Method = "DELETE",
+            Uri = uri,
+            QueryParams = queryParams,
+            Headers = headers,
+            CancellationToken = cancellationToken,
+        });
+
+        return Task.FromResult(GetResponse<T>());
+    }
+
     private T GetResponse<T>()
         => _responses.TryGetValue(typeof(T), out var response) ? (T)response : default;
 

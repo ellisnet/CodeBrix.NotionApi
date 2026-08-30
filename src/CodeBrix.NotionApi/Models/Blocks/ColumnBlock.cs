@@ -15,5 +15,12 @@ public class ColumnBlock : Block
     {
         [JsonPropertyName("children")]
         public IEnumerable<IColumnChildrenBlock> Children { get; set; }
+
+        /// <summary>
+        /// Proportional width of this column relative to its siblings.
+        /// For example, a value of 0.25 means this column takes 25% of the available width.
+        /// </summary>
+        [JsonPropertyName("width_ratio")]
+        public double? WidthRatio { get; set; }
     }
 }

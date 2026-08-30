@@ -15,5 +15,11 @@ public class ColumnBlockRequest : BlockObjectRequest
     {
         [JsonPropertyName("children")]
         public IEnumerable<IColumnChildrenBlockRequest> Children { get; set; }
+
+        /// <summary>
+        /// Proportional width of this column relative to its siblings.
+        /// </summary>
+        [JsonPropertyName("width_ratio")]
+        public double? WidthRatio { get; set; }
     }
 }

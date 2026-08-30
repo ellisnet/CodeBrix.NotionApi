@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
@@ -34,10 +35,7 @@ internal class UpdateDataSourceBodyRequest : IUpdateDataSourceBodyParameters
     [JsonPropertyName("in_trash")]
     public bool InTrash { get; set; }
 
-    /// <summary>
-    /// Whether the database should be moved to or from the trash. If not provided, the trash
-    /// status will not be updated. Equivalent to `in_trash`.
-    /// </summary>
+    [Obsolete("Use InTrash instead. The 'archived' field is deprecated as of Notion API version 2026-03-11.")]
     [JsonPropertyName("archived")]
     public bool Archived { get; set; }
 
@@ -54,6 +52,7 @@ internal class UpdateDataSourceBodyRequest : IUpdateDataSourceBodyParameters
     /// <returns>A new UpdateDataSourceBodyRequest with only body parameters</returns>
     internal static UpdateDataSourceBodyRequest FromRequest(UpdateDataSourceRequest source)
     {
+#pragma warning disable CS0618 // the deprecated 'archived' value is carried through verbatim
         return new UpdateDataSourceBodyRequest
         {
             Title = source.Title,
@@ -63,5 +62,6 @@ internal class UpdateDataSourceBodyRequest : IUpdateDataSourceBodyParameters
             Archived = source.Archived,
             Parent = source.Parent
         };
+#pragma warning restore CS0618
     }
 }

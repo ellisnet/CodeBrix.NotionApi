@@ -46,6 +46,8 @@ public static class ApiEndpoints
 
     public static class BlocksApiUrls
     {
+        public static string QueryMeetingNotes() => "/v1/blocks/meeting_notes/query";
+
         public static string Retrieve(string blockId)
         {
             return $"/v1/blocks/{blockId}";
@@ -124,6 +126,12 @@ public static class ApiEndpoints
         {
             return "/v1/comments";
         }
+
+        public static string RetrieveSingle(string commentId) => $"/v1/comments/{commentId}";
+
+        public static string Update(string commentId) => $"/v1/comments/{commentId}";
+
+        public static string Delete(string commentId) => $"/v1/comments/{commentId}";
     }
 
     public static class AuthenticationUrls
@@ -141,6 +149,24 @@ public static class ApiEndpoints
         public static string Complete(string fileUploadId) => $"/v1/file_uploads/{fileUploadId}/complete";
         public static string List => "/v1/file_uploads";
         public static string Retrieve(IRetrieveFileUploadPathParameters pathParameters) => $"/v1/file_uploads/{pathParameters.FileUploadId}";
+    }
+
+    public static class ViewsApiUrls
+    {
+        private const string BasePath = "/v1/views";
+        public static string List() => BasePath;
+        public static string Create() => BasePath;
+        public static string Retrieve(string viewId) => $"{BasePath}/{viewId}";
+        public static string Update(string viewId) => $"{BasePath}/{viewId}";
+        public static string Delete(string viewId) => $"{BasePath}/{viewId}";
+        public static string CreateQuery(string viewId) => $"{BasePath}/{viewId}/queries";
+        public static string GetQueryResults(string viewId, string queryId) => $"{BasePath}/{viewId}/queries/{queryId}";
+        public static string DeleteQuery(string viewId, string queryId) => $"{BasePath}/{viewId}/queries/{queryId}";
+    }
+
+    public static class EmojisApiUrls
+    {
+        public static string List => "/v1/custom_emojis";
     }
 
     public static class DataSourcesApiUrls

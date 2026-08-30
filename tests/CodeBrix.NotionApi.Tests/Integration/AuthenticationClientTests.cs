@@ -4,10 +4,16 @@ using Xunit;
 
 namespace CodeBrix.NotionApi.Tests.Integration; //was previously: Notion.IntegrationTests;
 
+[Collection(NotionIntegrationCollection.Name)]
 public class AuthenticationClientTests : IntegrationTestBase
 {
     private readonly string _clientId = GetEnvironmentVariableRequired("NOTION_CLIENT_ID");
     private readonly string _clientSecret = GetEnvironmentVariableRequired("NOTION_CLIENT_SECRET");
+
+    // An OAuth authorization code is single-use and short-lived, so it cannot be checked in: supply
+    // a freshly minted one through NOTION_OAUTH_CODE when running these tests. (Upstream left its
+    // own spent codes hard-coded here, which made the tests unrunnable for anyone else.)
+    private readonly string _oauthCode = GetEnvironmentVariableRequired("NOTION_OAUTH_CODE");
 
     [Fact]
     public async Task Create_and_revoke_token()
@@ -15,7 +21,7 @@ public class AuthenticationClientTests : IntegrationTestBase
         // Arrange
         var createRequest = new CreateTokenRequest
         {
-            Code = "03b3bd2d-6b96-4104-a9f4-ee04d881532c",
+            Code = _oauthCode,
             ClientId = _clientId,
             ClientSecret = _clientSecret,
             RedirectUri = "https://localhost:5001",
@@ -43,7 +49,7 @@ public class AuthenticationClientTests : IntegrationTestBase
         // Arrange
         var createRequest = new CreateTokenRequest
         {
-            Code = "036822b2-62c1-42f4-95ea-0153e69cc20e",
+            Code = _oauthCode,
             ClientId = _clientId,
             ClientSecret = _clientSecret,
             RedirectUri = "https://localhost:5001",
@@ -83,7 +89,7 @@ public class AuthenticationClientTests : IntegrationTestBase
         // Arrange
         var createRequest = new CreateTokenRequest
         {
-            Code = "0362126c-6635-4472-8303-c1701a6a0b71",
+            Code = _oauthCode,
             ClientId = _clientId,
             ClientSecret = _clientSecret,
             RedirectUri = "https://localhost:5001",

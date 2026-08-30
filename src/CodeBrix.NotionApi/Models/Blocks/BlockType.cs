@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json.Serialization;
 
 namespace CodeBrix.NotionApi; //was previously: Notion.Client;
@@ -21,6 +22,7 @@ public readonly struct BlockType : IEquatable<BlockType>
     public const string Heading1Value = "heading_1";
     public const string Heading2Value = "heading_2";
     public const string Heading3Value = "heading_3";
+    public const string Heading4Value = "heading_4";
     public const string BulletedListItemValue = "bulleted_list_item";
     public const string NumberedListItemValue = "numbered_list_item";
     public const string ToDoValue = "to_do";
@@ -50,12 +52,18 @@ public readonly struct BlockType : IEquatable<BlockType>
     public const string TableRowValue = "table_row";
     public const string LinkPreviewValue = "link_preview";
     public const string UnsupportedValue = "unsupported";
+
+    [Obsolete("Use MeetingNotesValue instead. 'transcription' was renamed to 'meeting_notes' in Notion API version 2026-03-11.")]
     public const string TranscriptionValue = "transcription";
+
+    public const string MeetingNotesValue = "meeting_notes";
+    public const string TabValue = "tab";
 
     public static readonly BlockType Paragraph = new BlockType(ParagraphValue);
     public static readonly BlockType Heading1 = new BlockType(Heading1Value);
     public static readonly BlockType Heading2 = new BlockType(Heading2Value);
     public static readonly BlockType Heading3 = new BlockType(Heading3Value);
+    public static readonly BlockType Heading4 = new BlockType(Heading4Value);
     public static readonly BlockType BulletedListItem = new BlockType(BulletedListItemValue);
     public static readonly BlockType NumberedListItem = new BlockType(NumberedListItemValue);
     public static readonly BlockType ToDo = new BlockType(ToDoValue);
@@ -85,7 +93,15 @@ public readonly struct BlockType : IEquatable<BlockType>
     public static readonly BlockType TableRow = new BlockType(TableRowValue);
     public static readonly BlockType LinkPreview = new BlockType(LinkPreviewValue);
     public static readonly BlockType Unsupported = new BlockType(UnsupportedValue);
+
+    [Obsolete("Use MeetingNotes instead. 'transcription' was renamed to 'meeting_notes' in Notion API version 2026-03-11.")]
+    [SuppressMessage("ReSharper", "UnusedMember.Global")]
+#pragma warning disable CS0618 // the obsolete const is this obsolete field's own value
     public static readonly BlockType Transcription = new BlockType(TranscriptionValue);
+#pragma warning restore CS0618
+
+    public static readonly BlockType MeetingNotes = new BlockType(MeetingNotesValue);
+    public static readonly BlockType Tab = new BlockType(TabValue);
 
     public static implicit operator BlockType(string value) => new BlockType(value);
 

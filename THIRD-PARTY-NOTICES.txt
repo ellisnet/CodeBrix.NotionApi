@@ -24,19 +24,36 @@ https://github.com/ellisnet/CodeBrix.NotionApi/issues
 
    Project:    notion-sdk-net — A Notion API dotnet client
    URL:        https://github.com/notion-dotnet/notion-sdk-net
-   Version:    5.0.0 (tag 5.0.0, commit bfe6e6a2c8a079f2394cbb06f7ef9eafec260d76)
+   Version:    5.0.0 plus post-5.0.0 upstream work
+               Initial port:  tag 5.0.0,
+                              commit bfe6e6a2c8a079f2394cbb06f7ef9eafec260d76
+               Re-synced to:  branch main,
+                              commit 6e82f3016dc49a5064056a63f4bc4e2b5ffa89c4
+                              (2026-06-17; upstream's untagged work toward
+                              their 6.0.0, which moves to Notion API version
+                              2026-03-11)
    Copyright:  Copyright (c) 2021 Vedant Koditkar
    License:    MIT License (full text below)
 
    The production source code of the CodeBrix.NotionApi assembly (the .cs
    files under src/CodeBrix.NotionApi/) was ported from the
-   Src/Notion.Client tree of notion-sdk-net 5.0.0, EXCEPT these
-   CodeBrix-authored files, which are new in this repository:
+   Src/Notion.Client tree of notion-sdk-net at the commits named above,
+   EXCEPT these CodeBrix-authored files, which are new in this repository:
    InternalsVisibleTo.cs, Serialization/RuntimeTypeConverterFactory.cs,
-   and the eight Unknown* fallback classes (UnknownRichText.cs,
+   Serialization/ExtensibleEnumConverter.cs, Authoring/NotionText.cs,
+   Authoring/NotionBlocks.cs, Authoring/NotionAuthoringExtensions.cs,
+   and the Unknown* fallback classes (UnknownRichText.cs,
    UnknownPropertyValue.cs, UnknownProperty.cs, UnknownPropertyItem.cs,
    UnknownFileObject.cs, UnknownFileObjectWithName.cs,
    UnknownFileImportResult.cs, UnknownDataSourcePropertyConfig.cs).
+   UnknownViewConfiguration exists upstream as well and was ported.
+
+   The 2026-06-17 re-sync brought in upstream's Views API, custom-emoji
+   listing, the additional comment endpoints, the meeting-notes query and
+   block type, the heading_4 and tab block types, the content-position
+   object for appending block children, relative date filter values, the
+   typed status property configuration, and the Notion API version bump to
+   2026-03-11.
 
    The test source code under tests/CodeBrix.NotionApi.Tests/ was ported
    from the Test/Notion.UnitTests and Test/Notion.IntegrationTests trees
@@ -46,9 +63,13 @@ https://github.com/ellisnet/CodeBrix.NotionApi/issues
        (an image bundled by the upstream test suite as file-upload test
        data; the Notion logo itself is a brand asset of Notion Labs, Inc.)
    The test-infrastructure files FakeServer.cs, RecordingRestClient.cs,
-   ApiTestBase.cs, and Integration/IntegrationTestBase.cs are
-   CodeBrix-authored replacements for upstream's WireMock.Net/Moq-based
-   infrastructure.
+   ApiTestBase.cs, Integration/IntegrationTestBase.cs and
+   Integration/NotionIntegrationCollection.cs are CodeBrix-authored
+   replacements for upstream's WireMock.Net/Moq-based infrastructure.
+   The test files ViewsClientTests.cs, EmojisClientTests.cs,
+   CommentsClientTests.cs, DeclaredTypeSerializationTests.cs,
+   Models/ApiVersion20260311ModelTests.cs, Models/Blocks/NewBlockTypeTests.cs
+   and Models/Blocks/ContentPositionTests.cs are CodeBrix-authored.
 
    Each ported .cs file carries a "//was previously: <upstream namespace>;"
    comment on its namespace line; CodeBrix-authored files do not.
@@ -74,8 +95,12 @@ https://github.com/ellisnet/CodeBrix.NotionApi/issues
        declaring type itself were redirected to new Unknown* subclasses,
        because the System.Text.Json converter cannot dispatch a type to
        itself without recursing.
-     - The empty concrete base class Filter was made abstract so the
-       runtime-type serialization path applies to it.
+     - The empty concrete base classes Filter, RichTextBaseInput and
+       DataSourcePropertyConfigRequest were made abstract so the
+       runtime-type serialization path applies to them. (System.Text.Json
+       serializes the DECLARED type and does not inherit a base class's
+       [JsonConverter], so leaving them concrete dropped every subtype
+       payload they carried.)
      - [JsonConverter(typeof(StringEnumConverter))] attributes that
        upstream placed on STRING-typed properties (tolerated by
        Newtonsoft, rejected by System.Text.Json) were dropped.
@@ -87,6 +112,23 @@ https://github.com/ellisnet/CodeBrix.NotionApi/issues
        recording fake (RecordingRestClient), SilverAssertions, and
        xunit.v3; *Test file/class names were renamed to *Tests.
      - The Microsoft.SourceLink.GitHub package reference was dropped.
+     - UpdateCommentRequest.CommentId and UpdateViewRequest.ViewId are
+       [JsonIgnore]d here; upstream serializes them into the request body
+       even though both are path parameters.
+     - JSON string escaping differs and is intentionally left alone:
+       System.Text.Json's default JavaScriptEncoder escapes "+", "&", "<",
+       ">", "'" and non-ASCII characters as \uXXXX inside string values,
+       where upstream's Newtonsoft.Json writes them literally. The output
+       is valid JSON that the Notion API decodes identically, so parity
+       with upstream's exact bytes is not pursued.
+     - The file-upload multipart content type is parsed with
+       MediaTypeHeaderValue.Parse rather than constructed, so a Notion
+       content type that carries parameters (e.g. "text/plain;
+       charset=utf-8") does not throw.
+     - Upstream's hard-coded workspace ids and spent OAuth authorization
+       codes in the integration tests were replaced with values read from
+       environment variables, and the integration test classes were put in
+       a single non-parallel xUnit collection.
      - The target framework was narrowed from netstandard2.0 to net10.0.
 
    MIT License

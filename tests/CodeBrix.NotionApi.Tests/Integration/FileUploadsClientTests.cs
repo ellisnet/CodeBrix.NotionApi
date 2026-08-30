@@ -1,9 +1,11 @@
+using System;
 using System.IO;
 using System.Threading.Tasks;
 using CodeBrix.NotionApi;
 using Xunit;
 
 namespace CodeBrix.NotionApi.Tests.Integration; //was previously: Notion.IntegrationTests;
+[Collection(NotionIntegrationCollection.Name)]
 public class FileUploadsClientTests : IntegrationTestBase
 {
     [Fact]
@@ -13,7 +15,7 @@ public class FileUploadsClientTests : IntegrationTestBase
         var request = new CreateFileUploadRequest
         {
             Mode = FileUploadMode.ExternalUrl,
-            ExternalUrl = "https://unsplash.com/photos/hOhlYhAiizc/download?ixid=M3wxMjA3fDB8MXxhbGx8fHx8fHx8fHwxNzYwMTkxNzc3fA&force=true",
+            ExternalUrl = "https://upload.wikimedia.org/wikipedia/commons/b/b4/JPEG_example_JPG_RIP_100.jpg",
             FileName = "sample-image.jpg",
         };
 
@@ -64,11 +66,24 @@ public class FileUploadsClientTests : IntegrationTestBase
     [Fact]
     public async Task Verify_multi_part_file_upload_flow()
     {
-        // Create file upload
+        // Arrange - Notion requires every part except the last to be at least 5 MiB, so the 4.56 KiB
+        // notion-logo.png asset cannot drive this flow. Build a large payload in memory instead of
+        // committing a multi-megabyte fixture.
+        const string FileName = "multipart-sample.txt";
+        const int PartSizeInBytes = 6 * 1024 * 1024;
+
+        var payload = new byte[PartSizeInBytes * 2];
+        var line = System.Text.Encoding.ASCII.GetBytes("CodeBrix.NotionApi multi-part upload test payload.\n");
+
+        for (var offset = 0; offset < payload.Length; offset += line.Length)
+        {
+            Array.Copy(line, 0, payload, offset, Math.Min(line.Length, payload.Length - offset));
+        }
+
         var createRequest = new CreateFileUploadRequest
         {
             Mode = FileUploadMode.MultiPart,
-            FileName = "notion-logo.png",
+            FileName = FileName,
             NumberOfParts = 2
         };
 
@@ -76,14 +91,13 @@ public class FileUploadsClientTests : IntegrationTestBase
 
         Assert.NotNull(createResponse);
         Assert.NotNull(createResponse.Id);
-        Assert.Equal("notion-logo.png", createResponse.FileName);
-        Assert.Equal("image/png", createResponse.ContentType);
+        Assert.Equal(FileName, createResponse.FileName);
         Assert.Equal("pending", createResponse.Status);
 
-        // Send file parts
-        using (var fileStream = File.OpenRead("assets/notion-logo.png"))
+        // Act - send both parts
+        using (var payloadStream = new MemoryStream(payload))
         {
-            var splitStreams = StreamSplitExtensions.Split(fileStream, 2);
+            var splitStreams = StreamSplitExtensions.Split(payloadStream, 2);
 
             foreach (var (partStream, index) in splitStreams.WithIndex())
             {
@@ -91,7 +105,7 @@ public class FileUploadsClientTests : IntegrationTestBase
                     createResponse.Id,
                     new FileData
                     {
-                        FileName = "notion-logo.png",
+                        FileName = FileName,
                         Data = partStream,
                         ContentType = createResponse.ContentType
                     },
@@ -103,22 +117,22 @@ public class FileUploadsClientTests : IntegrationTestBase
 
                 Assert.NotNull(partSendResponse);
                 Assert.Equal(createResponse.Id, partSendResponse.Id);
-                Assert.Equal("notion-logo.png", partSendResponse.FileName);
+                Assert.Equal(FileName, partSendResponse.FileName);
             }
-
-            // Complete file upload
-            var completeRequest = new CompleteFileUploadRequest
-            {
-                FileUploadId = createResponse.Id
-            };
-
-            var completeResponse = await Client.FileUploads.CompleteAsync(completeRequest, cancellationToken: TestContext.Current.CancellationToken);
-
-            Assert.NotNull(completeResponse);
-            Assert.Equal(createResponse.Id, completeResponse.Id);
-            Assert.Equal("notion-logo.png", completeResponse.FileName);
-            Assert.Equal("completed", completeResponse.Status);
         }
+
+        // Assert - completing the upload flips it to "uploaded"
+        var completeRequest = new CompleteFileUploadRequest
+        {
+            FileUploadId = createResponse.Id
+        };
+
+        var completeResponse = await Client.FileUploads.CompleteAsync(completeRequest, cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.NotNull(completeResponse);
+        Assert.Equal(createResponse.Id, completeResponse.Id);
+        Assert.Equal(FileName, completeResponse.FileName);
+        Assert.Equal("uploaded", completeResponse.Status);
     }
 
     [Fact]
@@ -146,7 +160,7 @@ public class FileUploadsClientTests : IntegrationTestBase
         var createRequest = new CreateFileUploadRequest
         {
             Mode = FileUploadMode.ExternalUrl,
-            ExternalUrl = "https://unsplash.com/photos/hOhlYhAiizc/download?ixid=M3wxMjA3fDB8MXxhbGx8fHx8fHx8fHwxNzYwMTkxNzc3fA&force=true",
+            ExternalUrl = "https://upload.wikimedia.org/wikipedia/commons/b/b4/JPEG_example_JPG_RIP_100.jpg",
             FileName = "sample-image.jpg",
         };
 

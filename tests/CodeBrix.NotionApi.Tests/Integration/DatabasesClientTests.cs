@@ -8,6 +8,7 @@ using Xunit;
 
 namespace CodeBrix.NotionApi.Tests.Integration; //was previously: Notion.IntegrationTests;
 
+[Collection(NotionIntegrationCollection.Name)]
 public class DatabasesClientTests : IntegrationTestBase, IAsyncLifetime
 {
     private Page _page;

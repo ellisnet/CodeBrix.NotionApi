@@ -21,5 +21,11 @@ public class NumberedListItemBlock : Block, IColumnChildrenBlock, INonColumnBloc
 
         [JsonPropertyName("children")]
         public IEnumerable<INonColumnBlock> Children { get; set; }
+
+        [JsonPropertyName("list_start_index")]
+        public int? ListStartIndex { get; set; }
+
+        [JsonPropertyName("list_format")]
+        public NumberedListFormat? ListFormat { get; set; }
     }
 }

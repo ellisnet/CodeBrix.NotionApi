@@ -6,6 +6,7 @@ using CodeBrix.NotionApi;
 using Xunit;
 
 namespace CodeBrix.NotionApi.Tests.Integration; //was previously: Notion.IntegrationTests;
+[Collection(NotionIntegrationCollection.Name)]
 public class DataSourcesClientTests : IntegrationTestBase, IAsyncLifetime
 {
     private Page _page;
@@ -25,10 +26,19 @@ public class DataSourcesClientTests : IntegrationTestBase, IAsyncLifetime
     }
 
     [Fact]
-    public async Task CanLoadDatasourceWithIcon()
+    public async Task CanLoadDatasource()
     {
-        var db = await Client.DataSources.RetrieveAsync(
-            new RetrieveDataSourceRequest {DataSourceId = "32e7ae0e-1154-8011-8950-000bf24b9d2c"}, cancellationToken: TestContext.Current.CancellationToken);
+        // Arrange
+        var database = await CreateDatabaseWithAPageAsync("Test Data Source DB");
+        var dataSourceId = database.DataSources.First().DataSourceId;
+
+        // Act
+        var dataSource = await Client.DataSources.RetrieveAsync(
+            new RetrieveDataSourceRequest { DataSourceId = dataSourceId },
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.NotNull(dataSource);
     }
 
     [Fact]
@@ -293,8 +303,8 @@ public class DataSourcesClientTests : IntegrationTestBase, IAsyncLifetime
     public async Task QueryDataSourceAsync_ShouldReturnResults()
     {
         // Arrange
-        var databaseId = "2557ae0e115480e19a21f56ef36ad6a1";
-        var dataSourceId = await CreateAndGetDatasourceIdAsync(databaseId);
+        var database = await CreateDatabaseWithAPageAsync("Test Data Source DB");
+        var dataSourceId = await CreateAndGetDatasourceIdAsync(database.Id);
         var queryRequest = new QueryDataSourceRequest
         {
             DataSourceId = dataSourceId,
@@ -312,8 +322,8 @@ public class DataSourcesClientTests : IntegrationTestBase, IAsyncLifetime
     public async Task QueryDataSourceAsync_ForNewPage()
     {
         // Arrange
-        var databaseId = "2557ae0e115480e19a21f56ef36ad6a1";
-        var dataSourceId = await CreateAndGetDatasourceIdAsync(databaseId);
+        var database = await CreateDatabaseWithAPageAsync("Test Data Source DB");
+        var dataSourceId = await CreateAndGetDatasourceIdAsync(database.Id);
         var queryRequest = new QueryDataSourceRequest
         {
             DataSourceId = dataSourceId,
@@ -345,7 +355,8 @@ public class DataSourcesClientTests : IntegrationTestBase, IAsyncLifetime
     public async Task QueryDataSourceAsync_ShouldReturnResults2()
     {
         // Arrange
-        var dataSourceId = "24e7ae0e-1154-8026-a2d5-000b7df0f007";
+        var database = await CreateDatabaseWithAPageAsync("Test Data Source DB");
+        var dataSourceId = await CreateAndGetDatasourceIdAsync(database.Id);
         var queryRequest = new QueryDataSourceRequest
         {
             DataSourceId = dataSourceId,

@@ -43,9 +43,7 @@ public class DataSource : IObject, IObjectModificationData, IQueryDataSourceResp
     [JsonPropertyName("is_inline")]
     public bool IsInline { get; set; }
 
-    /// <summary>
-    /// Indicates whether the data source is archived.
-    /// </summary>
+    [Obsolete("Use InTrash instead. The 'archived' field is deprecated as of Notion API version 2026-03-11.")]
     [JsonPropertyName("archived")]
     public bool Archived { get; set; }
 

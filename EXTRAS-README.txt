@@ -30,18 +30,28 @@ Two groups live inside it:
     Response.Create() / scenario states / LogEntries) and RecordingRestClient
     (an IRestClient fake that records calls and returns canned objects).
     Notable files: PagesClientTests.cs, BlocksClientTests.cs,
-    DataSourcesClientTests.cs, FilterTests.cs, PropertyTests.cs,
+    DataSourcesClientTests.cs, ViewsClientTests.cs, EmojisClientTests.cs,
+    CommentsClientTests.cs, FilterTests.cs, PropertyTests.cs,
     SearchClientTests.cs, UserClientTests.cs, FileUploadsClientTests.cs,
     AuthenticationClientTests.cs, RetryPolicyTests.cs,
-    NotionClientFactoryTests.cs, DateCustomConverterTests.cs, and the two
-    UpdatePropertyConfigurationRequest serialization test files.
+    NotionClientFactoryTests.cs, DateCustomConverterTests.cs,
+    DeclaredTypeSerializationTests.cs (guards the System.Text.Json
+    declared-type traps described in MAINTAINER-README), and the two
+    UpdatePropertyConfigurationRequest serialization test files, plus
+    Models/ApiVersion20260311ModelTests.cs, Models/Blocks/NewBlockTypeTests.cs
+    and Models/Blocks/ContentPositionTests.cs.
 
   * Integration tests (tests/CodeBrix.NotionApi.Tests/Integration) hit the REAL
     Notion API and are OPT-IN. Every class in that folder skips unless the
     NOTION_AUTH_TOKEN, NOTION_PARENT_PAGE_ID and NOTION_PARENT_DATABASE_ID
-    environment variables are set. They CREATE REAL CONTENT in the target
-    workspace, so point them at a scratch page you do not mind polluting. See
-    MAINTAINER-README.txt for the details.
+    environment variables are set; AuthenticationClientTests additionally needs
+    NOTION_CLIENT_ID, NOTION_CLIENT_SECRET and NOTION_OAUTH_CODE. They CREATE
+    REAL CONTENT in the target workspace, so point them at a scratch page you
+    do not mind polluting, and they run as ONE non-parallel xUnit collection
+    (NotionIntegrationCollection) because Notion returns HTTP 409 when several
+    of them write under the same parent at once. See MAINTAINER-README.txt for
+    the details, including its "KNOWN COVERAGE GAPS" list of endpoints that
+    have never been exercised against live Notion.
 
 OPTIONAL TEST DATA
 ==================

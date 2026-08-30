@@ -6,6 +6,7 @@ using Xunit;
 
 namespace CodeBrix.NotionApi.Tests.Integration; //was previously: Notion.IntegrationTests;
 
+[Collection(NotionIntegrationCollection.Name)]
 public class CommentsClientTests : IntegrationTestBase, IAsyncLifetime
 {
     private Page _page;
@@ -88,5 +89,88 @@ public class CommentsClientTests : IntegrationTestBase, IAsyncLifetime
 
         var pageParent = Assert.IsType<PageParent>(response.Parent);
         Assert.Equal(_page.Id, pageParent.PageId);
+    }
+
+    [Fact]
+    public async Task ShouldRetrieveSingleComment()
+    {
+        // Arrange
+        var created = await Client.Comments.CreateAsync(
+            CreateCommentRequest.CreatePageComment(
+                new ParentPageInput { PageId = _page.Id },
+                new List<RichTextBaseInput>
+                {
+                    new RichTextTextInput { Text = new Text { Content = "Comment to retrieve" } }
+                }
+            )
+        , cancellationToken: TestContext.Current.CancellationToken);
+
+        // Act
+        var retrieved = await Client.Comments.RetrieveSingleAsync(
+            new RetrieveSingleCommentRequest { CommentId = created.Id }
+        , cancellationToken: TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.NotNull(retrieved);
+        Assert.Equal(created.Id, retrieved.Id);
+        Assert.Equal(created.DiscussionId, retrieved.DiscussionId);
+        var richText = Assert.IsType<RichTextText>(retrieved.RichText.First());
+        Assert.Equal("Comment to retrieve", richText.Text.Content);
+    }
+
+    [Fact]
+    public async Task ShouldUpdateComment()
+    {
+        // Arrange
+        var created = await Client.Comments.CreateAsync(
+            CreateCommentRequest.CreatePageComment(
+                new ParentPageInput { PageId = _page.Id },
+                new List<RichTextBaseInput>
+                {
+                    new RichTextTextInput { Text = new Text { Content = "Original text" } }
+                }
+            )
+        , cancellationToken: TestContext.Current.CancellationToken);
+
+        // Act
+        var updated = await Client.Comments.UpdateAsync(new UpdateCommentRequest
+        {
+            CommentId = created.Id,
+            RichText = new List<RichTextBase>
+            {
+                new RichTextText { Text = new Text { Content = "Updated text" } }
+            }
+        }, cancellationToken: TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.NotNull(updated);
+        Assert.Equal(created.Id, updated.Id);
+        var richText = Assert.IsType<RichTextText>(updated.RichText.First());
+        Assert.Equal("Updated text", richText.Text.Content);
+    }
+
+    [Fact]
+    public async Task ShouldDeleteComment()
+    {
+        // Arrange
+        var created = await Client.Comments.CreateAsync(
+            CreateCommentRequest.CreatePageComment(
+                new ParentPageInput { PageId = _page.Id },
+                new List<RichTextBaseInput>
+                {
+                    new RichTextTextInput { Text = new Text { Content = "Comment to delete" } }
+                }
+            )
+        , cancellationToken: TestContext.Current.CancellationToken);
+
+        // Act
+        await Client.Comments.DeleteAsync(created.Id, cancellationToken: TestContext.Current.CancellationToken);
+
+        // Assert
+        var comments = await Client.Comments.RetrieveAsync(
+            new RetrieveCommentsRequest { BlockId = _page.Id }
+        , cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.DoesNotContain(comments.Results, c => c.Id == created.Id);
     }
 }

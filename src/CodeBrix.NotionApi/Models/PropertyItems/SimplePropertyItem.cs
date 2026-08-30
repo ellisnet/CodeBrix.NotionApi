@@ -26,6 +26,7 @@ namespace CodeBrix.NotionApi; //was previously: Notion.Client;
 [JsonKnownType(typeof(PeoplePropertyItem), "people")]
 [JsonKnownType(typeof(RelationPropertyItem), "relation")]
 [JsonKnownType(typeof(RollupPropertyItem), "rollup")]
+[JsonKnownType(typeof(PlacePropertyItem), "place")]
 [JsonFallbackType(typeof(UnknownPropertyItem))]
 [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
 public abstract class SimplePropertyItem : IPropertyItemObject

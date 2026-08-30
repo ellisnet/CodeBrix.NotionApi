@@ -11,6 +11,7 @@ namespace CodeBrix.NotionApi.Tests.Integration; //was previously: Notion.Integra
 /// Verifies that the HttpClient lifecycle options introduced in ClientOptions work
 /// correctly against the real Notion API.
 /// </summary>
+[Collection(NotionIntegrationCollection.Name)]
 public class HttpClientOptionsTests : IntegrationTestBase
 {
     [Fact]

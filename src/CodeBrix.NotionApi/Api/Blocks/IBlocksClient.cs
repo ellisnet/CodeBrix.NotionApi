@@ -51,4 +51,12 @@ public interface IBlocksClient
     /// </summary>
     /// <param name="blockId">Identifier for a Notion block</param>
     Task DeleteAsync(string blockId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    ///     Queries meeting notes blocks across the workspace.
+    /// </summary>
+    Task<QueryMeetingNotesResponse> QueryMeetingNotesAsync(
+        QueryMeetingNotesRequest request,
+        CancellationToken cancellationToken = default
+    );
 }

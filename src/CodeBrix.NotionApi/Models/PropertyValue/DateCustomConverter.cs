@@ -75,6 +75,41 @@ public class DateCustomConverter : JsonConverter<Date>
 
         includeTime = dateTimeString.Contains("T") || dateTimeString.Contains(" ");
 
-        return DateTimeOffset.Parse(dateTimeString, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal);
+        // When the string has an explicit timezone (Z or +/-HH:mm), preserve it as-is so
+        // the returned DateTimeOffset keeps the original offset. AssumeUniversal would
+        // silently convert it to UTC, losing the offset and shifting the point-in-time
+        // if Notion returns dates in the workspace's local timezone.
+        // For strings without any timezone info, fall back to AssumeUniversal for UTC.
+        var style = HasExplicitTimezone(dateTimeString)
+            ? DateTimeStyles.None
+            : DateTimeStyles.AssumeUniversal;
+
+        return DateTimeOffset.Parse(dateTimeString, CultureInfo.InvariantCulture, style);
+    }
+
+    private static bool HasExplicitTimezone(string dateTimeString)
+    {
+        if (dateTimeString.EndsWith("Z", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        // A timezone designator (+/-) can only appear in the time portion, after T or a space.
+        int sep = dateTimeString.IndexOf('T');
+
+        if (sep < 0)
+        {
+            sep = dateTimeString.IndexOf(' ');
+        }
+
+        if (sep < 0)
+        {
+            // Date-only, so no timezone is possible.
+            return false;
+        }
+
+        var timePart = dateTimeString.Substring(sep + 1);
+
+        return timePart.Contains("+") || timePart.Contains("-");
     }
 }

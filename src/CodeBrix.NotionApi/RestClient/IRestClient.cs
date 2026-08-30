@@ -46,4 +46,11 @@ public interface IRestClient : IDisposable
         IDictionary<string, string> queryParams = null,
         IDictionary<string, string> headers = null,
         CancellationToken cancellationToken = default);
+
+    Task<T> DeleteAsync<T>(
+        string uri,
+        IDictionary<string, string> queryParams = null,
+        IDictionary<string, string> headers = null,
+        JsonSerializerOptions serializerOptions = null,
+        CancellationToken cancellationToken = default);
 }

@@ -19,6 +19,12 @@ public class Page : IObject, IObjectModificationData, IQueryDataSourceResponseOb
     public bool InTrash { get; set; }
 
     /// <summary>
+    ///     Whether the page is locked from editing in the Notion app UI.
+    /// </summary>
+    [JsonPropertyName("is_locked")]
+    public bool? IsLocked { get; set; }
+
+    /// <summary>
     ///     Property values of this page.
     /// </summary>
     [JsonPropertyName("properties")]

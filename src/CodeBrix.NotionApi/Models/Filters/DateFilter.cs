@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
@@ -8,11 +7,11 @@ public class DateFilter : SinglePropertyFilter, IRollupSubPropertyFilter
 {
     public DateFilter(
         string propertyName,
-        DateTime? equal = null,
-        DateTime? before = null,
-        DateTime? after = null,
-        DateTime? onOrBefore = null,
-        DateTime? onOrAfter = null,
+        RelativeDateValue? equal = null,
+        RelativeDateValue? before = null,
+        RelativeDateValue? after = null,
+        RelativeDateValue? onOrBefore = null,
+        RelativeDateValue? onOrAfter = null,
         Dictionary<string, object> pastWeek = null,
         Dictionary<string, object> pastMonth = null,
         Dictionary<string, object> pastYear = null,
@@ -47,11 +46,11 @@ public class DateFilter : SinglePropertyFilter, IRollupSubPropertyFilter
     public class Condition
     {
         public Condition(
-            DateTime? equal = null,
-            DateTime? before = null,
-            DateTime? after = null,
-            DateTime? onOrBefore = null,
-            DateTime? onOrAfter = null,
+            RelativeDateValue? equal = null,
+            RelativeDateValue? before = null,
+            RelativeDateValue? after = null,
+            RelativeDateValue? onOrBefore = null,
+            RelativeDateValue? onOrAfter = null,
             Dictionary<string, object> pastWeek = null,
             Dictionary<string, object> pastMonth = null,
             Dictionary<string, object> pastYear = null,
@@ -77,19 +76,19 @@ public class DateFilter : SinglePropertyFilter, IRollupSubPropertyFilter
         }
 
         [JsonPropertyName("equals")]
-        public DateTime? Equal { get; set; }
+        public RelativeDateValue? Equal { get; set; }
 
         [JsonPropertyName("before")]
-        public DateTime? Before { get; set; }
+        public RelativeDateValue? Before { get; set; }
 
         [JsonPropertyName("after")]
-        public DateTime? After { get; set; }
+        public RelativeDateValue? After { get; set; }
 
         [JsonPropertyName("on_or_before")]
-        public DateTime? OnOrBefore { get; set; }
+        public RelativeDateValue? OnOrBefore { get; set; }
 
         [JsonPropertyName("on_or_after")]
-        public DateTime? OnOrAfter { get; set; }
+        public RelativeDateValue? OnOrAfter { get; set; }
 
         [JsonPropertyName("past_week")]
         public Dictionary<string, object> PastWeek { get; set; }

@@ -1,12 +1,16 @@
+using System;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
 namespace CodeBrix.NotionApi; //was previously: Notion.Client;
 
+[Obsolete("Use MeetingNotesBlock instead. The 'transcription' block type was renamed to 'meeting_notes' in Notion API version 2026-03-11.")]
 public class TranscriptionBlock : Block
 {
     [JsonPropertyName("type")]
+#pragma warning disable CS0618 // this obsolete block's own type value
     public override BlockType Type => BlockType.Transcription;
+#pragma warning restore CS0618
 
     [JsonPropertyName("transcription")]
     public TranscriptionBlockResponse Transcription { get; set; }

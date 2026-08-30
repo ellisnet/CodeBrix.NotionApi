@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
@@ -17,9 +18,7 @@ public interface IQueryDataSourceBodyParameters : IPaginationParameters
     [JsonPropertyName("filter")]
     Filter Filter { get; set; }
 
-    /// <summary>
-    /// Whether to include archived results.
-    /// </summary>
+    [Obsolete("Use InTrash instead. The 'archived' field is deprecated as of Notion API version 2026-03-11.")]
     [JsonPropertyName("archived")]
     bool? Archived { get; set; }
 

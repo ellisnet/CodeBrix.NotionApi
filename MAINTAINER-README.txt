@@ -119,9 +119,57 @@ absent:
     NOTION_PARENT_PAGE_ID       a page the integration may write under
     NOTION_PARENT_DATABASE_ID   a database the integration may write under
 
+AuthenticationClientTests additionally requires, and skips without:
+
+    NOTION_CLIENT_ID            an OAuth application's client id
+    NOTION_CLIENT_SECRET        that application's client secret
+    NOTION_OAUTH_CODE           a FRESH authorization code (single-use and
+                                short-lived, so it cannot be checked in)
+
 NEVER commit a token value into this repository or into any documentation
 file. Supply the variables from the environment at run time only. These tests
 CREATE REAL CONTENT in the target workspace — point them at a scratch page.
+
+The integration classes all write under the SAME parent page, so they are in a
+single non-parallel xUnit collection (Integration/NotionIntegrationCollection.cs,
+DisableParallelization = true). Running them in parallel makes Notion return
+sporadic HTTP 409 "Conflict occurred while saving". Put any NEW integration test
+class in that collection too.
+
+KNOWN COVERAGE GAPS
+-------------------
+As of the 2026-08-30 re-sync the full suite is 321 tests, 0 failed, verified
+BOTH offline and against the real Notion API. These areas are nevertheless
+UNVERIFIED against live Notion — they are not known defects, but nothing has
+exercised them, so treat them as unproven when you change the code beneath
+them:
+
+  * THE OAUTH ENDPOINTS. IAuthenticationClient (CreateTokenAsync,
+    RevokeTokenAsync, IntrospectTokenAsync, RefreshTokenAsync) has NEVER run
+    against the live API in this repository. Doing so needs a real Notion OAuth
+    application plus a freshly minted, single-use authorization code, which is
+    why the three tests are env-var gated. This is the largest genuinely
+    unverified surface in the library.
+  * QueryMeetingNotesAsync RESPONSE SHAPE. The call reaches the correct
+    endpoint live — a workspace without the feature answers "This endpoint
+    requires a plan with AI meeting notes enabled", which proves the URL, verb
+    and auth are right — but no REAL meeting_notes payload has ever been
+    deserialized here. MeetingNotesBlock and its four data classes are covered
+    only by the synthetic JSON in NewBlockTypeTests /
+    ApiVersion20260311ModelTests. Verifying it needs a Notion plan with AI
+    meeting notes enabled.
+  * VIEW CONFIGURATION IS AN UNTYPED BAG. Every ViewConfiguration subclass
+    keeps its per-view-type settings in IDictionary<string, object>
+    AdditionalData, and CreateViewRequest.Filter / UpdateViewRequest.Filter /
+    View.Filter are plain `object`. That mirrors upstream — Notion has not
+    published those shapes — so it is a modelling gap, not a defect, and it is
+    documented for consumers in AGENT-README.txt. It does mean a view's
+    configuration round-trips without any compile-time checking; if Notion
+    publishes the shapes, model them then.
+
+Everything else in the library has been exercised end-to-end against a live
+workspace. See ~/ClaudeHome/notion-sdk-net-resync-COMPLETE-2026-08-30.txt (not
+in this repo) for the full re-sync record.
 
 PACKAGING AND PUBLISHING
 ========================
@@ -167,6 +215,92 @@ and Test/Notion.IntegrationTests trees, including the JSON fixtures and the
 notion-logo.png upload asset. THIRD-PARTY-NOTICES.txt is authoritative and must
 stay in sync with any further porting work.
 
+UPSTREAM RE-SYNC, 2026-08-30
+----------------------------
+Re-synced against upstream branch main at commit
+6e82f3016dc49a5064056a63f4bc4e2b5ffa89c4 (2026-06-17) — upstream's untagged
+work toward their 6.0.0. Everything in 5.0.0..main that touches
+Src/Notion.Client was brought across:
+
+  * DefaultNotionVersion 2025-09-03 -> 2026-03-11, with the model changes that
+    version implies: `archived` deprecated in favour of `in_trash` (DataSource,
+    FileUpload, the data-source query/update requests), `transcription` renamed
+    to `meeting_notes`, and BlockAppendChildrenRequest.After replaced by
+    Position (ContentPosition / AfterBlockContentPosition /
+    StartContentPosition / EndContentPosition).
+  * New endpoint groups: Views (8 endpoints, ViewsClient) and custom emojis
+    (EmojisClient). Both widen the NotionClient constructor and INotionClient.
+  * New endpoints on existing clients: Comments RetrieveSingle / Update /
+    Delete, Blocks QueryMeetingNotes.
+  * New block types: HeadingFour (all three families plus BlockType.Heading4
+    and the IBlock registration), Tab, MeetingNotes.
+  * New/changed model fields: Page.IsLocked, FileUpload.InTrash,
+    ColumnBlock(.Request).WidthRatio, NumberedListItemBlock list_start_index /
+    list_format (NumberedListFormat), ParagraphBlock(.Request).Icon,
+    PlacePropertyItem, ObjectType.View, VerificationStatus.Unverified,
+    VerificationPropertyValue.Info.State typed as VerificationStatus, typed
+    StatusConfig / StatusConfigRequest replacing Dictionary<string, object>,
+    DateFilter comparison arguments typed as RelativeDateValue.
+  * IRestClient/RestClient gained DeleteAsync<T>.
+  * The upstream fix to DateCustomConverter that preserves an explicit
+    timezone offset instead of flattening it to UTC.
+
+Upstream's duplicate NativeIconObject registration fix required nothing here:
+the original port had already landed on the post-fix shape (IconPageIcon
+registered for PageIconTypes.Icon, no NativeIcon type at all).
+
+DEFECTS FOUND AND FIXED DURING THE RE-SYNC
+------------------------------------------
+Four pre-existing defects in this port, none of them upstream's:
+
+  1. RichTextBaseInput was a CONCRETE empty base class. System.Text.Json
+     serializes the DECLARED type and does NOT inherit a base class's
+     [JsonConverter], so every IEnumerable<RichTextBaseInput> member -- all
+     ...UpdateBlock rich text, database and data-source titles, comment bodies
+     -- serialized as RichTextBase and silently DROPPED the text/equation/
+     mention payload. Fixed by making it abstract, which puts it on
+     RuntimeTypeConverterFactory's runtime-type path (the same treatment Filter
+     already had).
+  2. DataSourcePropertyConfigRequest had the same problem: as a concrete base
+     it made CreateDataSourceRequest.Properties emit only the base members,
+     dropping "title": {} / "select": {...} and so on. Also made abstract. The
+     UPDATE path was already safe via UpdatePropertyConfigurationRequestConverter.
+  3. CreateCommentRequest carried no [JsonPropertyName] of its own, so the POST
+     body went out as "richText"/"discussionId" and Notion rejected EVERY
+     Comments.CreateAsync call with "body.rich_text should be defined, instead
+     was `undefined`". The interface-declared names are now repeated on the
+     class, as the port convention requires. BlockRetrieveChildrenRequest,
+     RetrievePageAsMarkdownRequest and ListEmojisRequest had the same omission
+     but were harmless (their values are read as query/path parameters, never
+     serialized); they were fixed for consistency.
+  4. RestClient built the multipart file content type with
+     `new MediaTypeHeaderValue(...)`, which throws FormatException on a content
+     type that carries parameters (Notion returns "text/plain; charset=utf-8"
+     for a .txt upload). Now uses MediaTypeHeaderValue.Parse.
+
+To guard 1-3, DeclaredTypeSerializationTests.cs asserts the wire shape, and
+tests/.../probe-style reflection sweeps were used to confirm no other declared-
+type or interface-attribute holes remain.
+
+Test-harness rot fixed at the same time (all pre-existing):
+  * The integration tests carried the upstream author's own workspace ids
+    (DataSourcesClientTests, BlocksClientTests) and three spent OAuth
+    authorization codes (AuthenticationClientTests). Those now come from
+    NOTION_PARENT_PAGE_ID and a new NOTION_OAUTH_CODE, or create their own
+    resources.
+  * tests/.../Integration/assets/notion-logo.png was never copied to the test
+    output directory, so both file-upload flow tests failed with
+    DirectoryNotFoundException. The tests csproj now copies it.
+  * The multi-part upload test split a 4.56 KiB asset, which Notion always
+    rejects (every part but the last must be at least 5 MiB). It now builds a
+    12 MiB payload in memory.
+  * FileUploadsClientTests used an Unsplash URL with an expiring token; it now
+    uses the stable Wikimedia file the block tests already reference.
+  * The integration classes all wrote under the same parent page in parallel,
+    which made Notion return sporadic HTTP 409 "Conflict occurred while
+    saving". They are now one non-parallel xUnit collection
+    (NotionIntegrationCollection).
+
 Files that are CodeBrix-authored rather than ported:
     src/CodeBrix.NotionApi/InternalsVisibleTo.cs
     src/CodeBrix.NotionApi/Serialization/RuntimeTypeConverterFactory.cs
@@ -200,16 +334,45 @@ Port decisions worth knowing before you change serialization:
   * Upstream JsonSubTypes fallback declarations that pointed at the declaring
     type itself became the Unknown* subclasses, because the converter cannot
     dispatch a type to itself without recursing.
-  * The empty concrete base class Filter was made abstract so the
-    runtime-type serialization path applies to it.
+  * The empty concrete base classes Filter, RichTextBaseInput and
+    DataSourcePropertyConfigRequest were made abstract so the runtime-type
+    serialization path applies to them. Leaving them concrete silently dropped
+    every subtype payload they carried (see "DEFECTS FOUND AND FIXED" above).
+  * ACCEPTED DIVERGENCE — JSON string escaping. System.Text.Json's default
+    JavaScriptEncoder escapes "+", "&", "<", ">", "'" and every non-ASCII
+    character inside string values as \uXXXX, so this library puts
+    "2042-11-29T10:30:00\u002B05:00" on the wire where upstream (Newtonsoft)
+    writes a literal "+", and escapes accented letters and emoji the same way.
+    That is still VALID JSON, Notion decodes it back to the original characters,
+    and it has been this library's behaviour since the original port — it only
+    became conspicuous once DateFilter started carrying string-backed
+    RelativeDateValue values instead of DateTime.
+    THIS IS DELIBERATE AND APPROVED: byte-for-byte parity with upstream is not
+    a goal here; producing JSON that Notion accepts and understands is. Do NOT
+    "fix" it by setting Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping on
+    RestClient.DefaultSerializerOptions — that would change the wire format for
+    EVERY string the library sends, library-wide, to buy nothing Notion cares
+    about. FilterTests.DateFilterTest_WithDateTimeOffset asserts the escaped
+    form, and DateFilterTest_WithDateTimeOffset_RoundTripsThroughJson asserts
+    that parsing it back yields the literal offset a Notion server sees; keep
+    both if you touch this area.
+    Number formatting is the same story and equally accepted: System.Text.Json
+    writes a double in its shortest round-trippable form, so a whole number goes
+    out as -54 where Newtonsoft wrote -54.0. Both were sent to the live API
+    against a number property and both returned HTTP 200 with identical results
+    (JSON has one number type). FilterTests.NumberFilterTest -- which upstream
+    shipped DISABLED with the note "Not sure if integer should be serialized as
+    a number with decimals" -- is now enabled and pins the System.Text.Json
+    form; NumberFilterTest_WithFractionalValue covers the decimal case.
   * Open string-enum structs (BlockType, Color, ObjectType, PropertyValueType,
-    PropertyType, RichTextType, NotionAPIErrorCode, VerificationStatus) use
+    PropertyType, RichTextType, NotionAPIErrorCode, VerificationStatus,
+    ViewType, NumberedListFormat, RelativeDateValue) use
     ExtensibleEnumConverter<T> so unknown values from Notion round-trip instead
     of throwing. Each exposes const string ...Value members for attribute use
     and static readonly fields for code; keep both in sync when adding a value.
 
 The default Notion API version the client sends is the DefaultNotionVersion
-constant in Constants.cs. Changing it changes request and response shapes
+constant in Constants.cs (currently 2026-03-11). Changing it changes request and response shapes
 across the whole model layer — treat it as a breaking change and update the
 models and AGENT-README together.
 

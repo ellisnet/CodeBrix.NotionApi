@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
@@ -11,6 +12,8 @@ public class UpdateDataSourceRequest : IUpdateDataSourcePathParameters, IUpdateD
     public IDictionary<string, IUpdatePropertyConfigurationRequest> Properties { get; set; }
     [JsonPropertyName("in_trash")]
     public bool InTrash { get; set; }
+
+    [Obsolete("Use InTrash instead. The 'archived' field is deprecated as of Notion API version 2026-03-11.")]
     [JsonPropertyName("archived")]
     public bool Archived { get; set; }
     [JsonPropertyName("parent")]

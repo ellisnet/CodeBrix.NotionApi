@@ -24,6 +24,12 @@
 
   <ItemGroup>
     <None Include="data\**\*.json" CopyToOutputDirectory="PreserveNewest" />
+    <!--
+      The opt-in file-upload integration tests read "assets/notion-logo.png" relative to the test
+      output directory, so the asset has to be copied there. Without this the two upload-flow tests
+      fail with DirectoryNotFoundException instead of exercising the upload endpoints.
+    -->
+    <None Include="Integration\assets\**" Link="assets\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

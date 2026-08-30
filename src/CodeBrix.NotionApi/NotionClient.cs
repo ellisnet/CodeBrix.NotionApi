@@ -24,6 +24,10 @@ public interface INotionClient : IDisposable
 
     IDataSourcesClient DataSources { get; }
 
+    IViewsClient Views { get; }
+
+    IEmojisClient Emojis { get; }
+
     IRestClient RestClient { get; }
 }
 
@@ -39,7 +43,9 @@ public class NotionClient : INotionClient
         IBlocksClient blocks,
         IAuthenticationClient authenticationClient,
         IFileUploadsClient fileUploadsClient,
-        IDataSourcesClient dataSourcesClient)
+        IDataSourcesClient dataSourcesClient,
+        IViewsClient viewsClient,
+        IEmojisClient emojisClient)
     {
         RestClient = restClient;
         Users = users;
@@ -51,6 +57,8 @@ public class NotionClient : INotionClient
         AuthenticationClient = authenticationClient;
         FileUploads = fileUploadsClient;
         DataSources = dataSourcesClient;
+        Views = viewsClient;
+        Emojis = emojisClient;
     }
 
     public IAuthenticationClient AuthenticationClient { get; }
@@ -70,6 +78,10 @@ public class NotionClient : INotionClient
     public IFileUploadsClient FileUploads { get; }
 
     public IDataSourcesClient DataSources { get; }
+
+    public IViewsClient Views { get; }
+
+    public IEmojisClient Emojis { get; }
 
     public IRestClient RestClient { get; }
 

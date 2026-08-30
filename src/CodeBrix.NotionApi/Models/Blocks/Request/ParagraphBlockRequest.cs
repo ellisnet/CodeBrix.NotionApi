@@ -21,5 +21,12 @@ public class ParagraphBlockRequest : BlockObjectRequest, IColumnChildrenBlockReq
 
         [JsonPropertyName("children")]
         public IEnumerable<INonColumnBlockRequest> Children { get; set; }
+
+        /// <summary>
+        /// Optional icon for paragraph blocks that are direct children of a tab block.
+        /// Setting an icon on other paragraphs results in a validation error from the API.
+        /// </summary>
+        [JsonPropertyName("icon")]
+        public IPageIconRequest Icon { get; set; }
     }
 }

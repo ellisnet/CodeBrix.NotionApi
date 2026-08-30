@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
@@ -33,9 +34,7 @@ internal class QueryDataSourceBodyRequest : IQueryDataSourceBodyParameters
     [JsonPropertyName("page_size")]
     public int? PageSize { get; set; }
 
-    /// <summary>
-    /// Whether to include archived results.
-    /// </summary>
+    [Obsolete("Use InTrash instead. The 'archived' field is deprecated as of Notion API version 2026-03-11.")]
     [JsonPropertyName("archived")]
     public bool? Archived { get; set; }
 
@@ -59,6 +58,7 @@ internal class QueryDataSourceBodyRequest : IQueryDataSourceBodyParameters
     /// <returns>A new QueryDataSourceBodyRequest with only body parameters</returns>
     internal static QueryDataSourceBodyRequest FromRequest(QueryDataSourceRequest source)
     {
+#pragma warning disable CS0618 // the deprecated 'archived' value is carried through verbatim
         return new QueryDataSourceBodyRequest
         {
             Sorts = source.Sorts,
@@ -69,5 +69,6 @@ internal class QueryDataSourceBodyRequest : IQueryDataSourceBodyParameters
             InTrash = source.InTrash,
             ResultType = source.ResultType
         };
+#pragma warning restore CS0618
     }
 }

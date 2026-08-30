@@ -6,6 +6,7 @@ using Xunit;
 
 namespace CodeBrix.NotionApi.Tests.Integration; //was previously: Notion.IntegrationTests;
 
+[Collection(NotionIntegrationCollection.Name)]
 public class PageMarkdownTests : IntegrationTestBase, IAsyncLifetime
 {
     private Page _parentPage;

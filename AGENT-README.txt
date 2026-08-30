@@ -8,24 +8,50 @@ OVERVIEW
 ========
 CodeBrix.NotionApi is a fully managed .NET client library for the Notion API.
 It covers every Notion endpoint group — pages, blocks, databases, data sources,
-users, comments, search, file uploads and OAuth — plus the complete Notion
+views, users, comments, custom emojis, search, file uploads and OAuth — plus the
+complete Notion
 object model (rich text, property values, property items, block types, parents,
 icons, covers, files) and a set of high-level authoring helpers.
 
 Target framework: .NET 10 or later.
 
-Provenance: the library is a port of notion-sdk-net 5.0.0 (the Notion.Net
-package), rebuilt on System.Text.Json with no Newtonsoft.Json and no
+Provenance: the library is a port of notion-sdk-net (the Notion.Net package),
+rebuilt on System.Text.Json with no Newtonsoft.Json and no
 JsonSubTypes dependency. The upstream `Notion.Client` namespace became the
 single flat namespace `CodeBrix.NotionApi`; type names are otherwise unchanged.
 DO NOT reference the upstream package or write `using Notion.Client;` — the
 upstream namespaces do not exist in this assembly. Full attribution is in
 THIRD-PARTY-NOTICES.txt, which ships in the NuGet package.
 
-The client sends the Notion API version header `Notion-Version: 2025-09-03`
+The client sends the Notion API version header `Notion-Version: 2026-03-11`
 unless you override `ClientOptions.NotionVersion`. That version string is a
 protocol fact, not a package version: it decides which request/response shapes
 Notion applies, and the models in this library are shaped for it.
+
+WHAT 2026-03-11 CHANGED (read this if you are upgrading)
+--------------------------------------------------------
+  * `archived` is deprecated everywhere in favour of `in_trash`. The `Archived`
+    properties are still present and still serialize, but are marked
+    [Obsolete]: use `InTrash`. Notion no longer returns `archived` on a page.
+  * The `transcription` block type was renamed `meeting_notes`. `TranscriptionBlock`
+    and `BlockType.Transcription` are [Obsolete] but still deserialize, so
+    payloads from a workspace pinned to an older version keep working. New code
+    reads `MeetingNotesBlock`.
+  * `BlockAppendChildrenRequest.After` (a block id string) was REPLACED by
+    `Position`, a `ContentPosition` object. This is a compile-time break; see
+    "Appending, updating and deleting blocks".
+  * New block types: `heading_4` and `tab`.
+  * New endpoint groups: Views (`notion.Views`) and custom emojis
+    (`notion.Emojis`); new methods on Comments and Blocks.
+  * `DateFilter`'s comparison arguments moved from `DateTime?` to
+    `RelativeDateValue?`, which also accepts relative keywords like "today".
+    Implicit conversions from `DateTime`, `DateTimeOffset` and `string` mean
+    most existing call sites still compile unchanged.
+  * `StatusProperty.Status` and `StatusDataSourcePropertyConfig.Status` are now
+    a typed `StatusConfig` instead of `Dictionary<string, object>`.
+  * `VerificationPropertyValue.Info.State` is now a `VerificationStatus`
+    instead of a `string`, and gained the `Unverified` value.
+  * `Page.IsLocked` (`bool?`) and `FileUpload.InTrash` were added.
 
 INSTALLATION
 ============
@@ -95,7 +121,7 @@ NotionClientFactory : INotionClientFactory
 ClientOptions
 -------------
     string      BaseUrl        { get; set; }   // default https://api.notion.com/
-    string      NotionVersion  { get; set; }   // default 2025-09-03
+    string      NotionVersion  { get; set; }   // default 2026-03-11
     string      AuthToken      { get; set; }   // integration token (Bearer)
     IRetryPolicy RetryPolicy   { get; set; }   // opt-in; null = no retries
     HttpClient  HttpClient     { get; set; }   // caller-owned when supplied
@@ -111,9 +137,11 @@ INotionClient : IDisposable — one sub-client per endpoint group
     IPagesClient          Pages                { get; }
     IDatabasesClient      Databases            { get; }
     IDataSourcesClient    DataSources          { get; }
+    IViewsClient          Views                { get; }
     IBlocksClient         Blocks               { get; }
     ISearchClient         Search               { get; }
     ICommentsClient       Comments             { get; }
+    IEmojisClient         Emojis               { get; }
     IFileUploadsClient    FileUploads          { get; }
     IAuthenticationClient AuthenticationClient { get; }
     IRestClient           RestClient           { get; }
@@ -153,7 +181,7 @@ IDatabasesClient
         DatabasesCreateRequest databasesCreateParameters, ...)
     Task<Database> UpdateAsync(DatabasesUpdateRequest databasesUpdateRequest, ...)
 
-IMPORTANT: there is NO QueryAsync on IDatabasesClient. Under the 2025-09-03
+IMPORTANT: there is NO QueryAsync on IDatabasesClient. Under the 2026-03-11
 API a database is a container of DATA SOURCES, and querying rows lives on
 `IDataSourcesClient.QueryAsync`. Read the database first
 (`Databases.RetrieveAsync`), take a `DataSourceId` out of its `DataSources`
@@ -177,6 +205,25 @@ IBlocksClient
     Task<AppendChildrenResponse> AppendChildrenAsync(
         BlockAppendChildrenRequest request, ...)
     Task DeleteAsync(string blockId, ...)          // moves the block to trash
+    Task<QueryMeetingNotesResponse> QueryMeetingNotesAsync(
+        QueryMeetingNotesRequest request, ...)
+
+IViewsClient
+------------
+    Task<PaginatedList<View>> ListAsync(ListViewsRequest request, ...)
+    Task<View> CreateAsync(CreateViewRequest request, ...)
+    Task<View> RetrieveAsync(string viewId, ...)
+    Task<View> UpdateAsync(UpdateViewRequest request, ...)
+    Task<View> DeleteAsync(string viewId, ...)
+    Task<ViewQueryResponse> CreateQueryAsync(CreateViewQueryRequest request, ...)
+    Task<PaginatedList<PageReference>> GetQueryResultsAsync(
+        GetViewQueryResultsRequest request, ...)
+    Task<DeletedViewQueryResponse> DeleteQueryAsync(
+        DeleteViewQueryRequest request, ...)
+
+IEmojisClient
+-------------
+    Task<ListEmojisResponse> ListAsync(ListEmojisRequest request, ...)
 
 IUsersClient
 ------------
@@ -195,6 +242,9 @@ ICommentsClient
     Task<Comment> CreateAsync(CreateCommentRequest createCommentParameters, ...)
     Task<RetrieveCommentsResponse> RetrieveAsync(
         RetrieveCommentsRequest parameters, ...)
+    Task<Comment> RetrieveSingleAsync(RetrieveSingleCommentRequest request, ...)
+    Task<Comment> UpdateAsync(UpdateCommentRequest request, ...)
+    Task DeleteAsync(string commentId, ...)
 
 IFileUploadsClient
 ------------------
@@ -236,13 +286,18 @@ IRestClient : IDisposable (escape hatch for endpoints not yet modelled)
     Task DeleteAsync(string uri,
         IDictionary<string, string> queryParams = null,
         IDictionary<string, string> headers = null, ...)
+    Task<T> DeleteAsync<T>(string uri,
+        IDictionary<string, string> queryParams = null,
+        IDictionary<string, string> headers = null,
+        JsonSerializerOptions serializerOptions = null, ...)
 
 `ApiEndpoints` is a public static class of URL builders
 (`ApiEndpoints.PagesApiUrls.Retrieve(pageId)`, `ApiEndpoints.BlocksApiUrls`,
 `ApiEndpoints.UsersApiUrls`, `ApiEndpoints.SearchApiUrls`,
 `ApiEndpoints.CommentsApiUrls`, `ApiEndpoints.DatabasesApiUrls`,
 `ApiEndpoints.FileUploadsApiUrls`, `ApiEndpoints.AuthenticationUrls`,
-`ApiEndpoints.DataSourcesApiUrls`) if you need a path for IRestClient.
+`ApiEndpoints.DataSourcesApiUrls`, `ApiEndpoints.ViewsApiUrls`,
+`ApiEndpoints.EmojisApiUrls`) if you need a path for IRestClient.
 
 DEPENDENCY INJECTION — the correct setup
 ========================================
@@ -383,7 +438,7 @@ IObject / ObjectType
         ObjectType Object { get; }
 
 `ObjectType` values: `Page`, `Database`, `Block`, `User`, `Comment`,
-`FileUpload`, `DataSource`, `PageMarkdown` (plus `...Value` consts). IObject
+`FileUpload`, `DataSource`, `PageMarkdown`, `View` (plus `...Value` consts). IObject
 dispatches polymorphically on the JSON `"object"` field to `Page`, `Database`,
 `IBlock`, `User` or `PageMarkdownResponse`, falling back to `UnknownObject`.
 
@@ -413,6 +468,8 @@ Concrete paginated responses, all `PaginatedList<T>` subclasses:
     ListUsersResponse         : PaginatedList<User>
     RetrieveCommentsResponse  : PaginatedList<Comment>
     ListFileUploadsResponse   : PaginatedList<FileUpload>
+    ListEmojisResponse        : PaginatedList<CustomEmoji>
+    QueryMeetingNotesResponse : PaginatedList<MeetingNotesBlock>
 
 The pagination loop is always the same shape:
 
@@ -623,8 +680,12 @@ Supporting shapes:
     class RollupValue       { string Type; double? Number; Date Date;
                               List<PropertyValue> Array }
     class UniqueIdValue     { string Prefix; double? Number }
-    class VerificationPropertyValue.Info { string State; User VerifiedBy;
-                                           Date Date }
+    class VerificationPropertyValue.Info { VerificationStatus State;
+                                           User VerifiedBy; Date Date }
+        (`State` was a plain `string` before API 2026-03-11. VerificationStatus
+         is an extensible string-enum struct: Verified | Unverified | Expired |
+         None. Notion READS back Verified / Expired / None and ACCEPTS
+         Verified / Unverified on a write.)
     class PlacePropertyValue.PlaceInfo { double Lat; double Lon; string Name;
                               string Address; string AwsPlaceId;
                               string GooglePlaceId }
@@ -747,6 +808,7 @@ RichText), `NumberPropertyItem` (double? Number), `SelectPropertyItem`,
 `RelationPropertyItem`, `RollupPropertyItem` (RollupPropertyItem.Data),
 `FormulaPropertyItem`, `CreatedByPropertyItem`, `CreatedTimePropertyItem`,
 `LastEditedByPropertyItem`, `LastEditedTimePropertyItem`,
+`PlacePropertyItem` (PlacePropertyValue.PlaceInfo Place),
 `UnknownPropertyItem` (fallback).
 
     var item = await notion.Pages.RetrievePagePropertyItemAsync(
@@ -766,7 +828,7 @@ RichText), `NumberPropertyItem` (double? Number), `SelectPropertyItem`,
 
 QUERYING A DATA SOURCE
 ======================
-Under the 2025-09-03 API, rows live in a DATA SOURCE, and a database points at
+Under the 2026-03-11 API, rows live in a DATA SOURCE, and a database points at
 one or more of them. The full round trip:
 
     var database = await notion.Databases.RetrieveAsync(databaseId);
@@ -848,9 +910,9 @@ condition arguments, and exposes the condition object as a settable property:
     FilesFilter(string propertyName, bool? isEmpty = null,
         bool? isNotEmpty = null)
 
-    DateFilter(string propertyName, DateTime? equal = null,
-        DateTime? before = null, DateTime? after = null,
-        DateTime? onOrBefore = null, DateTime? onOrAfter = null,
+    DateFilter(string propertyName, RelativeDateValue? equal = null,
+        RelativeDateValue? before = null, RelativeDateValue? after = null,
+        RelativeDateValue? onOrBefore = null, RelativeDateValue? onOrAfter = null,
         Dictionary<string, object> pastWeek = null,
         Dictionary<string, object> pastMonth = null,
         Dictionary<string, object> pastYear = null,
@@ -859,9 +921,25 @@ condition arguments, and exposes the condition object as a settable property:
         Dictionary<string, object> nextYear = null,
         bool? isEmpty = null, bool? isNotEmpty = null)
 
-The relative-date arguments are marker objects: pass
-`new Dictionary<string, object>()` to select them (Notion expects an empty JSON
-object there).
+The pastWeek / pastMonth / pastYear / nextWeek / nextMonth / nextYear arguments
+are marker objects: pass `new Dictionary<string, object>()` to select them
+(Notion expects an empty JSON object there).
+
+The five comparison arguments take `RelativeDateValue`, an extensible
+string-enum struct with IMPLICIT conversions from `DateTime`, `DateTimeOffset`
+and `string`, so existing `DateTime` call sites keep compiling:
+
+    new DateFilter("Due", onOrBefore: DateTime.UtcNow.AddDays(30))
+    new DateFilter("Due", onOrAfter: RelativeDateValue.Today)
+    new DateFilter("Due", before: RelativeDateValue.OneWeekFromNow)
+
+    RelativeDateValue keywords: Today, Tomorrow, Yesterday, OneWeekAgo,
+    OneWeekFromNow, OneMonthAgo, OneMonthFromNow (each with a `...Value` const).
+
+    A `DateTime` converts using its Kind: Utc -> "...Z", Local -> "...+hh:mm",
+    Unspecified -> no suffix. A `DateTimeOffset` always keeps its offset. Note
+    that System.Text.Json's default encoder escapes "+" as \u002B in the
+    serialized filter — that is still valid JSON and Notion decodes it back.
 
 Filters whose condition is supplied as an already-built Condition object:
 
@@ -908,6 +986,19 @@ Response side: a `DataSource` carries
         string Id, Type, Name, Description
         IDictionary<string, object> AdditionalData
 
+`StatusDataSourcePropertyConfig.Status` is a TYPED `StatusConfig` (it was a
+`Dictionary<string, object>` before API 2026-03-11):
+
+    class StatusConfig  { IEnumerable<StatusOption> Options;
+                          IEnumerable<StatusGroup> Groups;
+                          IDictionary<string, object> AdditionalData }
+    class StatusOption  { string Id, Name; Color? Color }
+    class StatusGroup   { string Id, Name; Color? Color;
+                          IEnumerable<string> OptionIds }
+
+`StatusProperty.Status` (the database-level property family) uses the same
+`StatusConfig`.
+
 Concrete configs: `TitleDataSourcePropertyConfig`,
 `RichTextDataSourcePropertyConfig`, `NumberDataSourcePropertyConfig`
 (NumberResponse), `SelectDataSourcePropertyConfig` (SelectOptionResponse),
@@ -931,10 +1022,24 @@ Concrete configs: `TitleDataSourcePropertyConfig`,
 
 Request side: a PARALLEL `...Request` family.
 
-    class DataSourcePropertyConfigRequest
+    abstract class DataSourcePropertyConfigRequest
         virtual string Type { get; set; }
         string Description { get; set; }
         IDictionary<string, object> AdditionalData
+
+    (ABSTRACT: always construct one of the concrete `...Request` subclasses
+     below. System.Text.Json serializes the DECLARED type, so a concrete base
+     here would drop the per-type payload when the value sits in an
+     `IDictionary<string, DataSourcePropertyConfigRequest>`.)
+
+`StatusDataSourcePropertyConfigRequest.Status` is a typed `StatusConfigRequest`
+(it was an `IDictionary<string, object>` before API 2026-03-11):
+
+    class StatusConfigRequest { IEnumerable<StatusOptionRequest> Options;
+                                IEnumerable<StatusGroupRequest> Groups }
+    class StatusOptionRequest { string Id, Name; Color? Color }
+    class StatusGroupRequest  { string Id, Name; Color? Color;
+                                IEnumerable<string> OptionIds }
 
 Concrete requests: `TitleDataSourcePropertyConfigRequest`,
 `RichTextDataSourcePropertyConfigRequest`,
@@ -1059,8 +1164,9 @@ same JSON object as `name` when serialized.
 `IEnumerable<DataSourceReferenceResponse> DataSources`, where
 `DataSourceReferenceResponse` is `{ string DataSourceId; string Name }`.
 `DataSource` (response) exposes `Title`, `Description`, `Parent`,
-`DatabaseParent`, `IsInline`, `Archived`, `InTrash`, `Properties`, `Icon`,
-`Cover`, `Url`, `PublicUrl`, plus the IObjectModificationData members.
+`DatabaseParent`, `IsInline`, `Archived` ([Obsolete] — use `InTrash`),
+`InTrash`, `Properties`, `Icon`, `Cover`, `Url`, `PublicUrl`, plus the
+IObjectModificationData members.
 The database-level `Property` family mirrors the same information under the
 older `PropertyType` discriminator and appears where the API still returns
 database properties: `TitleProperty`, `RichTextProperty`, `NumberProperty`,
@@ -1121,12 +1227,17 @@ Feature-by-feature table. Read type — Request type — Update type — payload
 
     paragraph
         ParagraphBlock / ParagraphBlockRequest / ParagraphUpdateBlock
-        .Paragraph -> Info { RichText, Color?, Children }
-    heading_1 / heading_2 / heading_3
-        HeadingOneBlock, HeadingTwoBlock, HeadingThreeBlock
-        HeadingOneBlockRequest, HeadingTwoBlockRequest, HeadingThreeBlockRequest
-        HeadingOneUpdateBlock, HeadingTwoUpdateBlock, HeadingThreeUpdateBlock
-        .Heading_1 / .Heading_2 / .Heading_3 ->
+        .Paragraph -> Info { RichText, Color?, Children, Icon }
+        (`Icon` is `IPageIcon` on the response and `IPageIconRequest` on the
+         request. It is ONLY legal on a paragraph that is a direct child of a
+         tab block — setting it anywhere else is a validation error.)
+    heading_1 / heading_2 / heading_3 / heading_4
+        HeadingOneBlock, HeadingTwoBlock, HeadingThreeBlock, HeadingFourBlock
+        HeadingOneBlockRequest, HeadingTwoBlockRequest,
+        HeadingThreeBlockRequest, HeadingFourBlockRequest
+        HeadingOneUpdateBlock, HeadingTwoUpdateBlock, HeadingThreeUpdateBlock,
+        HeadingFourUpdateBlock
+        .Heading_1 / .Heading_2 / .Heading_3 / .Heading_4 ->
             Info { RichText, Color?, IsToggleable }
         (the payload property really is named Heading_1 / Heading_2 /
          Heading_3, with an underscore)
@@ -1135,7 +1246,12 @@ Feature-by-feature table. Read type — Request type — Update type — payload
         .BulletedListItem -> Info { RichText, Color?, Children }
     numbered_list_item
         NumberedListItemBlock / ...Request / NumberedListItemUpdateBlock
-        .NumberedListItem -> Info { RichText, Color?, Children }
+        .NumberedListItem -> Info { RichText, Color?, Children,
+                                    int? ListStartIndex,
+                                    NumberedListFormat? ListFormat }
+        (ListStartIndex and ListFormat are READ-ONLY response fields — Notion
+         rejects them on create/update. `NumberedListFormat` is an extensible
+         string-enum struct: Numbers | Letters | Roman.)
     to_do
         ToDoBlock / ToDoBlockRequest / ToDoUpdateBlock
         .ToDo -> Info { RichText, IsChecked, Color?, Children }
@@ -1168,7 +1284,10 @@ Feature-by-feature table. Read type — Request type — Update type — payload
         ColumnListBlock / ColumnListBlockRequest      .ColumnList -> Info
                                                       { Children (columns) }
         ColumnBlock / ColumnBlockRequest              .Column -> Info
-                                                      { Children }
+                                                      { Children,
+                                                        double? WidthRatio }
+        (WidthRatio is this column's share of the available width, e.g. 0.25
+         for 25%. Settable on the request and returned on the response.)
         (a column_list may contain ONLY columns; a column may contain any
          IColumnChildrenBlock. There is no ColumnUpdateBlock.)
     divider
@@ -1212,10 +1331,29 @@ Feature-by-feature table. Read type — Request type — Update type — payload
     template
         TemplateBlock / TemplateBlockRequest / TemplateUpdateBlock
         .Template -> Data { RichText, Children }
-    transcription
+    tab
+        TabBlock / TabBlockRequest        (no update type)
+        .Tab -> Data { }  on the response; on the request
+        .Tab -> Data { IEnumerable<ParagraphBlockRequest> Children }
+        Only PARAGRAPH blocks are legal tab children; each one is a tab, and
+        each may carry a `ParagraphBlockRequest.Info.Icon`.
+    meeting_notes
+        MeetingNotesBlock (read only)
+        .MeetingNotes -> MeetingNotesBlockData
+            { Title, string Status, MeetingNotesChildrenData Children,
+              MeetingNotesCalendarEventData CalendarEvent,
+              MeetingNotesRecordingData Recording }
+            MeetingNotesChildrenData { SummaryBlockId, NotesBlockId,
+                                       TranscriptBlockId }
+            MeetingNotesCalendarEventData { StartTime, EndTime, Attendees }
+            MeetingNotesRecordingData     { StartTime, EndTime }
+        Query them with `notion.Blocks.QueryMeetingNotesAsync` — that endpoint
+        requires a Notion plan with AI meeting notes enabled.
+    transcription   [OBSOLETE — renamed meeting_notes in API 2026-03-11]
         TranscriptionBlock (read only; TranscriptionBlockResponse,
         TranscriptionChildrenResponse, TranscriptionRecordingResponse,
-        TranscriptionCalendarEventResponse)
+        TranscriptionCalendarEventResponse). Still registered, so a payload
+        from a workspace pinned to an older API version deserializes.
     unsupported
         UnsupportedBlock — the FALLBACK for any block type this library does
         not model; `.Unsupported` is `UnsupportedBlockResponse
@@ -1228,14 +1366,24 @@ Feature-by-feature table. Read type — Request type — Update type — payload
 `File`, `PDF`, `Bookmark`, `Equation`, `Breadcrumb`, `Divider`, `Audio`,
 `TableOfContents`, `Callout`, `Quote`, `Column`, `ColumnList`, `Template`,
 `LinkToPage`, `SyncedBlock`, `Table`, `TableRow`, `LinkPreview`, `Unsupported`,
-`Transcription`, each with a `...Value` const string.
+`Heading4`, `Tab`, `MeetingNotes` and the obsolete `Transcription`, each with a
+`...Value` const string.
 
 Appending, updating and deleting blocks
 ---------------------------------------
     class BlockAppendChildrenRequest
         string BlockId                            // the PARENT page or block
         IEnumerable<IBlockObjectRequest> Children // max 100 per request
-        string After                              // append after this block id
+        ContentPosition Position                  // where to put them
+
+    BREAKING in API 2026-03-11: the flat `string After` was replaced by
+    `Position`, an object. Omit it and the blocks go to the end, as before.
+
+    abstract class ContentPosition { abstract string Type { get; } }
+        new StartContentPosition()      // first among the parent's children
+        new EndContentPosition()        // last (also the default)
+        new AfterBlockContentPosition   // right after an existing sibling
+            { AfterBlock = new AfterBlockReference { Id = siblingBlockId } }
 
     class BlockRetrieveChildrenRequest
         string BlockId; string StartCursor; int? PageSize
@@ -1391,6 +1539,132 @@ COMMENTS
 
 Set `Parent` for a NEW discussion on a page, or `DiscussionId` to reply into an
 existing one — never both.
+
+Retrieve, update and delete a SINGLE comment (added in API 2026-03-11):
+
+    class RetrieveSingleCommentRequest { string CommentId }
+    class UpdateCommentRequest
+        string CommentId                                  // path parameter
+        IEnumerable<RichTextBase> RichText                // the new content
+
+    var one = await notion.Comments.RetrieveSingleAsync(
+        new RetrieveSingleCommentRequest { CommentId = comment.Id });
+
+    var edited = await notion.Comments.UpdateAsync(new UpdateCommentRequest
+    {
+        CommentId = comment.Id,
+        RichText = NotionText.PlainBase("Revised remark."),
+    });
+
+    await notion.Comments.DeleteAsync(comment.Id);
+
+`UpdateCommentRequest.CommentId` is [JsonIgnore]d — it goes in the URL, not the
+body. Update replaces the comment's rich text wholesale; there is no partial
+edit. Delete is permanent and returns nothing.
+
+VIEWS
+=====
+A VIEW is a saved presentation of a data source (table, board, calendar, ...).
+The API models a view's rows through a two-step QUERY: create a query against
+the view, then page through its results.
+
+    class View : IObject
+        string Id; ObjectType Object => ObjectType.View
+        ViewType Type; string Name; string DataSourceId
+        DatabaseParent Parent; DateTime CreatedTime, LastEditedTime
+        string Url; PartialUser CreatedBy, LastEditedBy
+        object Filter; IEnumerable<ViewSort> Sorts
+        ViewConfiguration Configuration
+
+    class ViewSort { string Property, Timestamp, Direction }
+    class PageReference { string Object, Id }
+
+    class ListViewsRequest
+        string DatabaseId, DataSourceId, StartCursor; int? PageSize
+    class CreateViewRequest
+        string DataSourceId, Name; ViewType Type; string DatabaseId
+        object Filter; IEnumerable<ViewSort> Sorts
+        ViewConfiguration Configuration
+    class UpdateViewRequest
+        string ViewId                                     // path parameter
+        string Name; object Filter
+        IEnumerable<UpdateViewSort> Sorts                 // { Property, Direction }
+        ViewConfiguration Configuration
+    class CreateViewQueryRequest      { string ViewId; int? PageSize }
+    class GetViewQueryResultsRequest  { string ViewId, QueryId, StartCursor;
+                                        int? PageSize }
+    class DeleteViewQueryRequest      { string ViewId, QueryId }
+    class ViewQueryResponse
+        string Object, Id, ViewId; DateTime ExpiresAt; int TotalCount
+        IEnumerable<PageReference> Results; string NextCursor; bool HasMore
+    class DeletedViewQueryResponse    { string Object, Id; bool Deleted }
+
+`ViewType` (extensible string-enum struct): `Table`, `Board`, `List`,
+`Calendar`, `Timeline`, `Gallery`, `Form`, `Chart`, `Map`, `Dashboard`.
+
+`ViewConfiguration` is an ABSTRACT base discriminated on "type", with one
+concrete subclass per view type — `TableViewConfiguration`,
+`BoardViewConfiguration`, `CalendarViewConfiguration`,
+`TimelineViewConfiguration`, `GalleryViewConfiguration`,
+`ListViewConfiguration`, `MapViewConfiguration`, `FormViewConfiguration`,
+`ChartViewConfiguration`, `DashboardViewConfiguration` — plus
+`UnknownViewConfiguration` as the fallback for a view type Notion adds later.
+Each one holds its per-type settings in `IDictionary<string, object>
+AdditionalData`, so nothing is lost even though the shapes are not modelled.
+
+    // list, then read one in full
+    var views = await notion.Views.ListAsync(
+        new ListViewsRequest { DataSourceId = dataSourceId });
+    var view = await notion.Views.RetrieveAsync(views.Results[0].Id);
+
+    // query a view's rows
+    var query = await notion.Views.CreateQueryAsync(
+        new CreateViewQueryRequest { ViewId = view.Id, PageSize = 100 });
+    var rows = await notion.Views.GetQueryResultsAsync(
+        new GetViewQueryResultsRequest
+            { ViewId = view.Id, QueryId = query.Id, PageSize = 100 });
+    await notion.Views.DeleteQueryAsync(
+        new DeleteViewQueryRequest { ViewId = view.Id, QueryId = query.Id });
+
+GOTCHAS, all confirmed against the live API:
+  * ListAsync returns PARTIAL views — only `Object` and `Id` are populated.
+    Call RetrieveAsync for `Name`, `Type`, `Sorts` and `Configuration`.
+  * CreateAsync needs BOTH `DatabaseId` AND `DataSourceId`. Supplying only one
+    fails with a validation_error naming the other.
+  * DeleteAsync refuses to remove a database's LAST view
+    ("Cannot delete the last view of a database. Delete the database instead.").
+  * A view query is a SNAPSHOT with an `ExpiresAt`; re-create it rather than
+    holding a query id for long.
+
+CUSTOM EMOJIS
+=============
+    class ListEmojisRequest : IListEmojisQueryParameters
+        string StartCursor; int? PageSize
+    class ListEmojisResponse : PaginatedList<CustomEmoji>
+        Dictionary<string, object> CustomEmoji
+    class CustomEmoji { string Id, Name, Url;
+                        IDictionary<string, object> AdditionalData }
+
+    var emojis = await notion.Emojis.ListAsync(
+        new ListEmojisRequest { PageSize = 100 });
+
+The ids returned here are what `CustomEmojiPageIconRequest` wants when you set
+a custom emoji as a page icon.
+
+MEETING NOTES
+=============
+    class QueryMeetingNotesRequest
+        object Filter; object Sort; int? Limit
+        string StartCursor; int? PageSize
+    class QueryMeetingNotesResponse : PaginatedList<MeetingNotesBlock>
+
+    var notes = await notion.Blocks.QueryMeetingNotesAsync(
+        new QueryMeetingNotesRequest { PageSize = 100 });
+
+`Filter` and `Sort` are `object` because Notion has not published their shapes;
+pass an anonymous object or a Dictionary. The endpoint requires a Notion plan
+with AI meeting notes enabled and otherwise answers
+"This endpoint requires a plan with AI meeting notes enabled."
 
 FILE UPLOADS
 ============
@@ -1651,9 +1925,11 @@ What you CAN do — positional control exists only at INSERT time:
         new PageEndPosition()                 // last (also the default)
         new AfterBlockPagePosition            // right after a sibling
             { AfterBlock = new AfterBlockReference { Id = siblingBlockId } }
-  * Append blocks after a specific sibling. Set
-    `BlockAppendChildrenRequest.After` to a block id; with no `After`, appended
-    blocks go to the end.
+  * Append blocks at a chosen slot. Set `BlockAppendChildrenRequest.Position`
+    to a `ContentPosition` subtype — `StartContentPosition`,
+    `EndContentPosition`, or `AfterBlockContentPosition { AfterBlock =
+    new AfterBlockReference { Id = siblingBlockId } }`. With no `Position`,
+    appended blocks go to the end.
 
 Consequence / recipe: because there is no in-place reorder, get ordering right
 by CREATING in the desired order (optionally via Position). To fix the order of
@@ -1689,7 +1965,7 @@ Page create/update parameter reference
 
     class Page : IObject, IObjectModificationData,
                  IQueryDataSourceResponseObject, ISearchResponseObject
-        IParentOfPage Parent; bool InTrash;
+        IParentOfPage Parent; bool InTrash; bool? IsLocked;
         IDictionary<string, PropertyValue> Properties;
         string Url, PublicUrl; IPageIcon Icon; IPageCover Cover
         (plus Id, CreatedTime, LastEditedTime, CreatedBy, LastEditedBy)
@@ -2106,17 +2382,25 @@ COMMON PITFALLS TO AVOID
     over content shared with the integration.
   * Setting both `Parent` and `DiscussionId` on a `CreateCommentRequest`, or
     both `After` and `Position` on `InsertContentData`.
-  * Hard-coding a `NotionVersion`. The default (2025-09-03) is what these
+  * Hard-coding a `NotionVersion`. The default (2026-03-11) is what these
     models are shaped for; changing it changes request/response shapes.
+  * Still setting `BlockAppendChildrenRequest.After`. It is gone — use
+    `Position` with a `ContentPosition` subtype.
+  * Reading `Archived` on a page, database, data source or file upload. It is
+    [Obsolete] and Notion no longer returns `archived` on a page; use
+    `InTrash`.
+  * Sending `list_start_index` or `list_format` on a numbered list item, or an
+    `Icon` on a paragraph that is not a direct child of a tab block. Both are
+    validation errors.
 
 WHAT THIS PACKAGE DOES NOT DO
 =============================
   * It does not reorder existing pages or blocks — Notion has no such endpoint
     (positional control exists only at insert time).
   * It does not reposition on move — `Pages.MoveAsync` re-parents only.
-  * It does not expose a positional object on block append.
-    `BlockAppendChildrenRequest` carries a flat `After` block id and nothing
-    else; there is no start/end/after_block object on it.
+  * It does not reorder blocks after the fact — `BlockAppendChildrenRequest`
+    now carries a `Position` object (start / end / after_block), but that is
+    still INSERT-time control only.
   * It does not delete pages. Trash them
     (`PagesUpdateParameters.InTrash = true`).
   * It does not parse or render markdown itself; the markdown endpoints hand
@@ -2161,7 +2445,7 @@ QUICK REFERENCE CARD
     Namespace .............. CodeBrix.NotionApi        (single, flat)
     License ................ MIT
     Target ................. .NET 10 or later
-    API version sent ....... Notion-Version: 2025-09-03
+    API version sent ....... Notion-Version: 2026-03-11
 
     Create client .......... NotionClientFactory.Instance.Create(
                                  new ClientOptions { AuthToken = "ntn_..." })
@@ -2171,8 +2455,8 @@ QUICK REFERENCE CARD
     DI (single client) ..... services.AddNotionClient(o => o.AuthToken = ...);
                              inject INotionClient, do NOT dispose
 
-    Sub-clients ............ Users, Pages, Databases, DataSources, Blocks,
-                             Search, Comments, FileUploads,
+    Sub-clients ............ Users, Pages, Databases, DataSources, Views,
+                             Blocks, Search, Comments, Emojis, FileUploads,
                              AuthenticationClient, RestClient
 
     Create page ............ Pages.CreateAsync(PagesCreateParameters)

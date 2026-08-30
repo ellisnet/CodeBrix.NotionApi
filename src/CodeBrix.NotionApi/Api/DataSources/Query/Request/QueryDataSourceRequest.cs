@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
@@ -37,9 +38,7 @@ public class QueryDataSourceRequest : IQueryDataSourcePathParameters, IQueryData
     [JsonPropertyName("page_size")]
     public int? PageSize { get; set; }
 
-    /// <summary>
-    /// Whether to include archived results.
-    /// </summary>
+    [Obsolete("Use InTrash instead. The 'archived' field is deprecated as of Notion API version 2026-03-11.")]
     [JsonPropertyName("archived")]
     public bool? Archived { get; set; }
 

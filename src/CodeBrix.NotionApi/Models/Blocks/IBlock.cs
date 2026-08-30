@@ -22,6 +22,7 @@ namespace CodeBrix.NotionApi; //was previously: Notion.Client;
 [JsonKnownType(typeof(HeadingOneBlock), BlockType.Heading1Value)]
 [JsonKnownType(typeof(HeadingTwoBlock), BlockType.Heading2Value)]
 [JsonKnownType(typeof(HeadingThreeBlock), BlockType.Heading3Value)]
+[JsonKnownType(typeof(HeadingFourBlock), BlockType.Heading4Value)]
 [JsonKnownType(typeof(ImageBlock), BlockType.ImageValue)]
 [JsonKnownType(typeof(LinkPreviewBlock), BlockType.LinkPreviewValue)]
 [JsonKnownType(typeof(LinkToPageBlock), BlockType.LinkToPageValue)]
@@ -37,6 +38,11 @@ namespace CodeBrix.NotionApi; //was previously: Notion.Client;
 [JsonKnownType(typeof(ToDoBlock), BlockType.ToDoValue)]
 [JsonKnownType(typeof(ToggleBlock), BlockType.ToggleValue)]
 [JsonKnownType(typeof(VideoBlock), BlockType.VideoValue)]
+[JsonKnownType(typeof(MeetingNotesBlock), BlockType.MeetingNotesValue)]
+#pragma warning disable CS0618 // "transcription" payloads still deserialize, into the obsolete block
+[JsonKnownType(typeof(TranscriptionBlock), BlockType.TranscriptionValue)]
+#pragma warning restore CS0618
+[JsonKnownType(typeof(TabBlock), BlockType.TabValue)]
 [JsonKnownType(typeof(UnsupportedBlock), BlockType.UnsupportedValue)]
 [JsonFallbackType(typeof(UnsupportedBlock))]
 public interface IBlock : IObject, IObjectModificationData

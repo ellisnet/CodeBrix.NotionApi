@@ -177,7 +177,14 @@ public class RestClient : IRestClient
         void AttachContent(HttpRequestMessage httpRequest)
         {
             var fileContent = new StreamContent(formData.File.Data);
-            fileContent.Headers.ContentType = new MediaTypeHeaderValue(formData.File.ContentType);
+
+            // Parse rather than construct: Notion hands back content types that carry parameters
+            // (for example "text/plain; charset=utf-8"), and the MediaTypeHeaderValue constructor
+            // rejects anything but a bare media type with a FormatException.
+            if (!string.IsNullOrWhiteSpace(formData.File.ContentType))
+            {
+                fileContent.Headers.ContentType = MediaTypeHeaderValue.Parse(formData.File.ContentType);
+            }
 
             var form = new MultipartFormDataContent
             {
@@ -233,6 +240,19 @@ public class RestClient : IRestClient
     {
         await SendAsync(uri, HttpMethod.Delete, queryParams, headers, null,
             basicAuthenticationParameters: null, cancellationToken);
+    }
+
+    public async Task<T> DeleteAsync<T>(
+        string uri,
+        IDictionary<string, string> queryParams = null,
+        IDictionary<string, string> headers = null,
+        JsonSerializerOptions serializerOptions = null,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await SendAsync(uri, HttpMethod.Delete, queryParams, headers, null,
+            basicAuthenticationParameters: null, cancellationToken);
+
+        return await response.ParseStreamAsync<T>(serializerOptions);
     }
 
     private static ClientOptions MergeOptions(ClientOptions options)
