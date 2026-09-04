@@ -30,9 +30,13 @@ Notion applies, and the models in this library are shaped for it.
 
 WHAT 2026-03-11 CHANGED (read this if you are upgrading)
 --------------------------------------------------------
-  * `archived` is deprecated everywhere in favour of `in_trash`. The `Archived`
-    properties are still present and still serialize, but are marked
-    [Obsolete]: use `InTrash`. Notion no longer returns `archived` on a page.
+  * `archived` is deprecated everywhere in favour of `in_trash`. `Page` and
+    `Database` carry ONLY `InTrash` — neither type declares an `Archived`
+    member at all. `DataSource`, `FileUpload` and the data-source query and
+    update requests (`QueryDataSourceRequest`, `QueryDataSourceBodyRequest`,
+    `UpdateDataSourceRequest`, `UpdateDataSourceBodyRequest`) do still declare
+    an `Archived` property that serializes, but every one of them is marked
+    [Obsolete]: use `InTrash`.
   * The `transcription` block type was renamed `meeting_notes`. `TranscriptionBlock`
     and `BlockType.Transcription` are [Obsolete] but still deserialize, so
     payloads from a workspace pinned to an older version keep working. New code
@@ -81,7 +85,7 @@ outbound HTTPS to https://api.notion.com and a Notion integration token.
 KEY NAMESPACES / USINGS
 =======================
     using CodeBrix.NotionApi;   // the ENTIRE client and model surface —
-                                // one flat namespace, ~590 public types
+                                // one large, flat namespace
 
     using CodeBrix.Json.Extensions.Polymorphism;  // only if you declare your
                                 // own [JsonDiscriminator]/[JsonKnownType]/
@@ -975,7 +979,7 @@ Timestamp filters are NOT property filters and derive straight from `Filter`:
     TimestampLastEditedTimeFilter(... same ...)
 
 `VerificationStatus` is an extensible string-enum struct with `Verified`,
-`Expired`, `None`.
+`Unverified`, `Expired`, `None`.
 
 SCHEMA — CREATING AND UPDATING DATABASES AND DATA SOURCES
 =========================================================
@@ -1686,7 +1690,8 @@ FILE UPLOADS
 
     class FileUpload : IObject
         string Id, Status, FileName, ContentType, UploadUrl, CompleteUrl
-        long? ContentLength; DateTime? ExpiryTime; bool Archived
+        long? ContentLength; DateTime? ExpiryTime; bool InTrash
+        bool Archived                 // [Obsolete] — read InTrash instead
         DateTime CreatedTime, LastEditedTime; PartialUser CreatedBy
         FileImportResult FileImportResult
     abstract class FileImportResult -> FileImportSuccessResult |
@@ -2386,9 +2391,9 @@ COMMON PITFALLS TO AVOID
     models are shaped for; changing it changes request/response shapes.
   * Still setting `BlockAppendChildrenRequest.After`. It is gone — use
     `Position` with a `ContentPosition` subtype.
-  * Reading `Archived` on a page, database, data source or file upload. It is
-    [Obsolete] and Notion no longer returns `archived` on a page; use
-    `InTrash`.
+  * Reading `Archived` on a data source or file upload. It is [Obsolete]; use
+    `InTrash`. On a page or a database the same code does not even compile —
+    `Page` and `Database` have no `Archived` member.
   * Sending `list_start_index` or `list_format` on a numbered list item, or an
     `Icon` on a paragraph that is not a direct child of a tab block. Both are
     validation errors.
@@ -2425,8 +2430,18 @@ The test suite is the most complete worked example set:
   PagesClientTests.cs        create / retrieve / update pages and properties
   BlocksClientTests.cs       retrieve, append, update and delete blocks
   DataSourcesClientTests.cs  retrieve / create / update / query data sources
+  ViewsClientTests.cs        every IViewsClient method, including the
+                             create-query / get-results / delete-query flow
+  EmojisClientTests.cs       listing the workspace's custom emojis
+  CommentsClientTests.cs     RetrieveSingle / Update / Delete on a comment
   FilterTests.cs             every filter type, with the exact JSON produced
   PropertyTests.cs           property-value serialization round trips
+  DateCustomConverterTests.cs
+                             `Date` start / end / time-zone JSON round trips
+  DeclaredTypeSerializationTests.cs
+                             what the abstract request bases (Filter,
+                             RichTextBaseInput, DataSourcePropertyConfig-
+                             Request) actually put on the wire
   SearchClientTests.cs       search requests and responses
   UserClientTests.cs         Me / Retrieve / List
   FileUploadsClientTests.cs  the create-send-complete upload flow
@@ -2476,10 +2491,16 @@ QUICK REFERENCE CARD
                                  .DataSources.First().DataSourceId
 
     Blocks ................. Blocks.RetrieveAsync / RetrieveChildrenAsync /
-                             AppendChildrenAsync / UpdateAsync / DeleteAsync
+                             AppendChildrenAsync / UpdateAsync /
+                             DeleteAsync / QueryMeetingNotesAsync
     Search ................. Search.SearchAsync(SearchRequest)
     Users .................. Users.MeAsync / RetrieveAsync / ListAsync
-    Comments ............... Comments.CreateAsync / RetrieveAsync
+    Comments ............... Comments.CreateAsync / RetrieveAsync /
+                             RetrieveSingleAsync / UpdateAsync / DeleteAsync
+    Views .................. Views.ListAsync / CreateAsync / RetrieveAsync /
+                             UpdateAsync / DeleteAsync / CreateQueryAsync /
+                             GetQueryResultsAsync / DeleteQueryAsync
+    Emojis ................. Emojis.ListAsync(ListEmojisRequest)
     Uploads ................ FileUploads.CreateAsync / SendAsync /
                              CompleteAsync / ListAsync / RetrieveAsync
 
@@ -2507,4 +2528,5 @@ QUICK REFERENCE CARD
                              UnknownProperty, UnknownRichText,
                              UnknownFileObject, UnknownFileObjectWithName,
                              UnknownFileImportResult,
-                             UnknownDataSourcePropertyConfig, UnknownObject
+                             UnknownDataSourcePropertyConfig,
+                             UnknownViewConfiguration, UnknownObject

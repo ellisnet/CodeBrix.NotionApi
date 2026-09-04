@@ -6,10 +6,9 @@
     <RootNamespace>CodeBrix.NotionApi</RootNamespace>
     <!--
       SITUATIONAL EXCEPTION (AssemblyTools-style): this library is a port of
-      notion-sdk-net 5.0.0, whose public surface (500+ types, ~1000 public
-      members) ships with no upstream XML doc comments. Retrofitting summaries
-      on every member is out of scope for v1, so the documentation file is
-      turned off entirely for this project.
+      notion-sdk-net, whose very large public surface ships with no upstream
+      XML doc comments. Retrofitting summaries onto every member is out of
+      scope, so the documentation file is turned off entirely for this project.
     -->
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
   </PropertyGroup>

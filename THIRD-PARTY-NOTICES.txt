@@ -40,8 +40,8 @@ https://github.com/ellisnet/CodeBrix.NotionApi/issues
    Src/Notion.Client tree of notion-sdk-net at the commits named above,
    EXCEPT these CodeBrix-authored files, which are new in this repository:
    InternalsVisibleTo.cs, Serialization/RuntimeTypeConverterFactory.cs,
-   Serialization/ExtensibleEnumConverter.cs, Authoring/NotionText.cs,
-   Authoring/NotionBlocks.cs, Authoring/NotionAuthoringExtensions.cs,
+   Authoring/NotionText.cs, Authoring/NotionBlocks.cs,
+   Authoring/NotionAuthoringExtensions.cs,
    and the Unknown* fallback classes (UnknownRichText.cs,
    UnknownPropertyValue.cs, UnknownProperty.cs, UnknownPropertyItem.cs,
    UnknownFileObject.cs, UnknownFileObjectWithName.cs,

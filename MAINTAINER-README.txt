@@ -17,9 +17,9 @@ This repository builds ONE assembly and ships ONE NuGet package:
     covered by  AGENT-README.txt (repo root)
 
 The assembly is a .NET client library for the Notion API: every endpoint group
-(pages, blocks, databases, data sources, users, comments, search, file uploads,
-OAuth), the full Notion object model, and a small set of CodeBrix-authored
-authoring helpers on top.
+(pages, blocks, databases, data sources, views, users, comments, custom emojis,
+search, file uploads, OAuth), the full Notion object model, and a small set of
+CodeBrix-authored authoring helpers on top.
 
 Discriminator-based polymorphic JSON deserialization with fallback types is NOT
 built here. It comes from the external CodeBrix.Json.Extensions.MitLicenseForever
@@ -30,8 +30,18 @@ are not tracked.
 
 REPOSITORY LAYOUT
 =================
-    CodeBrix.NotionApi.slnx          the solution (Solution Items + Tests
-                                     folder + the library project)
+    CodeBrix.NotionApi.slnx          the solution. Its Solution Items folder
+                                     carries .gitignore, AGENT-README.txt,
+                                     EXTRAS-README.txt, global.json,
+                                     icon-codebrix-128.png, LICENSE,
+                                     MAINTAINER-README.txt, README-INDEX.txt,
+                                     README.md and THIRD-PARTY-NOTICES.txt;
+                                     the Tests folder carries the test
+                                     project; the library project sits at the
+                                     solution root
+    global.json                      selects the Microsoft.Testing.Platform
+                                     test runner. It does NOT pin an SDK
+                                     version. See BUILDING and TESTING below
     LICENSE                          MIT
     THIRD-PARTY-NOTICES.txt          upstream attribution and the full record
                                      of what was ported and how
@@ -47,14 +57,15 @@ REPOSITORY LAYOUT
 Library source folders (all in the flat CodeBrix.NotionApi namespace):
 
     Api/            one folder per endpoint group (Authentication, Blocks,
-                    Comments, Databases, DataSources, FileUploads, Pages,
-                    Search, Users), each with Request/ and Response/ types
-                    beside its client; ApiEndpoints.cs holds the URL builders
+                    Comments, Databases, DataSources, Emojis, FileUploads,
+                    Pages, Search, Users, Views), each with Request/ and
+                    Response/ types beside its client; ApiEndpoints.cs holds
+                    the URL builders
     Models/         the Notion object model: Blocks (+ Blocks/Request),
                     Comment, Common, Database (+ Properties, RichText),
                     DataSource (+ PropertyConfig, Request), File, FileUpload,
                     Filters, Page (+ PageIcon, PageCover), Parents,
-                    PropertyItems, PropertyValue, Request, User
+                    PropertyItems, PropertyValue, Request, User, View
     RestClient/     RestClient / IRestClient, ClientOptions, LoggingHandler
     Resilience/     IRetryPolicy, DefaultRetryPolicy, RetryHandler
     Serialization/  ExtensibleEnumConverter<T>, RuntimeTypeConverterFactory
@@ -76,12 +87,16 @@ BUILDING
 
 The library targets net10.0 only; there is no multi-targeting.
 
+global.json at the repo root does NOT pin an SDK version, so the newest
+installed .NET 10 SDK is used. It exists solely to select the test runner —
+see TESTING.
+
 `GenerateDocumentationFile` is set to FALSE for this project. This is a
 deliberate, situational exception (the AssemblyTools precedent): the ported
-upstream surface is roughly 590 public types with no upstream XML doc comments,
-and retrofitting summaries onto every member was out of scope. Do NOT turn the
-documentation file back on without doing that work — it would produce a wall of
-CS1591 warnings. CodeBrix-authored files (Authoring/, DI/, Resilience/,
+upstream surface is many hundreds of public types with no upstream XML doc
+comments, and retrofitting summaries onto every member was out of scope. Do NOT
+turn the documentation file back on without doing that work — it would produce
+a wall of CS1591 warnings. CodeBrix-authored files (Authoring/, DI/, Resilience/,
 Serialization/, the factory and exception types) DO carry XML doc comments;
 keep it that way for anything new you write.
 
@@ -89,10 +104,23 @@ TESTING
 =======
     dotnet test CodeBrix.NotionApi.slnx
 
-Test project: tests/CodeBrix.NotionApi.Tests (xUnit v3 + xunit.runner.visualstudio
-+ Microsoft.NET.Test.Sdk + coverlet.collector + SilverAssertions). It has a
-ProjectReference to the library and copies tests/CodeBrix.NotionApi.Tests/data/
-**/*.json to the output directory.
+THE TEST RUNNER IS Microsoft.Testing.Platform (MTP), selected by global.json at
+the repo root:
+
+    { "test": { "runner": "Microsoft.Testing.Platform" } }
+
+Because that setting lives in global.json rather than in the test csproj, it
+applies to every `dotnet test` run anywhere in the repository, including CI.
+Keep the file committed — without it `dotnet test` falls back to the older
+VSTest bridge. You can tell which one ran: MTP output ends in a "Test run
+summary:" block, while the VSTest bridge invokes MSBuild with
+`--target:VSTest`.
+
+Test project: tests/CodeBrix.NotionApi.Tests (xunit.v3 +
+xunit.runner.visualstudio + Microsoft.NET.Test.Sdk + SilverAssertions). There is
+no coverlet.collector reference and no coverage collection configured in this
+repository. The project has a ProjectReference to the library and copies
+tests/CodeBrix.NotionApi.Tests/data/**/*.json to the output directory.
 
 Conventions in this test project:
   * Test class files are named <Class>Tests.cs; test method bodies use the
