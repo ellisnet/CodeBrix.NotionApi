@@ -74,7 +74,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="CodeBrix.Json.Extensions.MitLicenseForever" Version="1.0.275.82" />
+    <PackageReference Include="CodeBrix.Json.Extensions.MitLicenseForever" Version="1.0.275.121" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.12" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.12" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.12" />
