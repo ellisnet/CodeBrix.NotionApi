@@ -74,13 +74,14 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="CodeBrix.Json.Extensions.MitLicenseForever" Version="1.0.248.1133" />
+    <PackageReference Include="CodeBrix.Json.Extensions.MitLicenseForever" Version="1.0.275.82" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.12" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.12" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.12" />
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="ILLink.Descriptors.xml" LogicalName="ILLink.Descriptors.xml" />
     <None Include="..\..\icon-codebrix-128.png" Pack="true" PackagePath="" />
     <None Include="..\..\README.md" Pack="true" PackagePath="" />
     <None Include="..\..\AGENT-README.txt" Pack="true" PackagePath="" />

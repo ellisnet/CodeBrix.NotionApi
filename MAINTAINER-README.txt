@@ -442,3 +442,18 @@ NOTES
     Microsoft.Extensions.DependencyInjection, even though its namespace line
     records the upstream location. Consumers therefore need
     `using CodeBrix.NotionApi;` in startup code.
+
+ANDROID TRIMMING MAINTENANCE
+============================
+RestClient and response option templates explicitly install a JSON metadata
+resolver when none is provided. Do not rely on the application's global JSON
+reflection default: it is disabled by default in full-trimmed Android builds.
+ILLink.Descriptors.xml is embedded under that exact logical resource name. It
+retains members of reachable types in the flat CodeBrix.NotionApi namespace,
+including nested DTOs and converters; required=false allows unreachable types
+to be removed. Keep this rule in place while serialization remains reflective.
+The Json.Extensions dependency minimum includes converter-constructor and known/
+fallback target preservation. Publish that dependency before this package.
+Consumer trimming requirements and the partial-trimming fallback belong near
+the top of AGENT-README.txt; do not turn representative device-test coverage
+into a claim of universal trim safety or NativeAOT compatibility.

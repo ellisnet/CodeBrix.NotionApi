@@ -89,3 +89,12 @@ CodeBrix.NotionApi is licensed under the MIT License - see the
 
 For licensing and provenance information about the open source code included in
 this package, see [THIRD-PARTY-NOTICES.txt](https://github.com/ellisnet/CodeBrix.NotionApi/blob/main/THIRD-PARTY-NOTICES.txt).
+
+## Android trimming
+
+The client now configures JSON metadata explicitly and preserves members of its
+reachable models during full trimming. Android ARM64 and x64 Release smoke tests
+cover both requests and responses with the global JSON reflection default disabled.
+Application-defined model types still need metadata preservation; this is not a
+NativeAOT guarantee. Use `<TrimMode>partial</TrimMode>` if your full-trimmed workflows
+have not been validated. See the prominent trimming guidance in `AGENT-README.txt`.

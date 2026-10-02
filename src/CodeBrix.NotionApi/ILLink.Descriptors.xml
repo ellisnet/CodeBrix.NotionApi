@@ -1,0 +1,9 @@
+<linker>
+  <assembly fullname="CodeBrix.NotionApi">
+    <!-- The wire contracts and converters share one namespace with the client APIs.
+         Retain members on reachable types for reflection-based JSON, including nested
+         DTOs and generic converters. Unreachable types may still be removed.
+         This does not root application models or change global serializer settings. -->
+    <type fullname="CodeBrix.NotionApi.*" preserve="all" required="false" />
+  </assembly>
+</linker>

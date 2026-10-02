@@ -4,6 +4,47 @@ A Guide for AI Coding Agents — CONSUMING the CodeBrix.NotionApi.MitLicenseFore
 NuGet package
 ================================================================================
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+ANDROID AND TRIMMING - READ BEFORE PUBLISHING
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+FULL TRIMMING IS NOT A DROP-IN SETTING FOR OLDER BUILDS OF THIS PACKAGE.
+They can fail with "JsonSerializerIsReflectionDisabled" or a missing JSON
+constructor, even when the same code works in Debug. Enabling the global JSON
+reflection switch alone does NOT restore members removed by trimming.
+
+The package containing this guide includes a library-side fix: its HTTP JSON
+pipeline explicitly configures a metadata resolver, and an embedded linker
+rule preserves members of reachable CodeBrix.NotionApi types (including nested
+models and converters). Unreachable types can still be removed. This trades
+some package-size reduction for reliable reflection-based wire contracts.
+No app-wide JsonSerializerIsReflectionEnabledByDefault override or app-level
+Notion assembly root is needed for the built-in model paths tested with this fix.
+
+FULL-TRIMMED ANDROID RELEASE BUILDS have been exercised on physical ARM64 and
+x64 devices with the global JSON reflection default DISABLED. Coverage includes
+users, nested/paginated models, polymorphic blocks and unknown-type fallback,
+page properties and dates, request runtime types, error responses, and custom
+options. This is representative coverage, not proof of every Notion endpoint.
+These tests use the .NET Android Mono runtime; they do not establish NativeAOT
+support. Trimming warnings have not all been eliminated.
+
+RECOMMENDED FALLBACK: USE PARTIAL TRIMMING if you use an older package, have
+not validated your actual full-trimmed Release workflows, or cannot preserve
+custom model metadata. In the consuming Android application's project:
+
+    <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+        <TrimMode>partial</TrimMode>
+    </PropertyGroup>
+
+The package's preservation rule covers ITS types, not application-defined
+response models used through IRestClient, custom derived models, or object-valued
+request payloads. Preserve those constructors/properties/fields yourself, or
+supply appropriate generated metadata where the API accepts serializer options.
+A custom TypeInfoResolver is respected, so it must cover every required type.
+Calling plain JsonSerializer outside the client does not use the client's
+configured options. Do not infer NativeAOT support from passing trimming tests.
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 OVERVIEW
 ========
 CodeBrix.NotionApi is a fully managed .NET client library for the Notion API.

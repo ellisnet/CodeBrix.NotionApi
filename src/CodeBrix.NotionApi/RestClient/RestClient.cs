@@ -5,6 +5,7 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.Json.Serialization.Metadata;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -16,6 +17,7 @@ public class RestClient : IRestClient
 
     internal static readonly JsonSerializerOptions DefaultSerializerOptions = new()
     {
+        TypeInfoResolver = new DefaultJsonTypeInfoResolver(),
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         PropertyNameCaseInsensitive = true,
