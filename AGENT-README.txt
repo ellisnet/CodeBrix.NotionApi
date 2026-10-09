@@ -2405,7 +2405,7 @@ COMMON PITFALLS TO AVOID
   * Mixing the request and response families: `RichTextBase` vs
     `RichTextBaseInput`, `IPageIcon` vs `IPageIconRequest`, `IParentOfPage` vs
     `IParentOfPageRequest`, `DataSourcePropertyConfig` vs
-    `DataSourcePropertyConfigRequest`, `Block` vs `BlockRequest` vs
+    `DataSourcePropertyConfigRequest`, `Block` vs `BlockObjectRequest` vs
     `UpdateBlock`. The compiler catches most of these; the parent families are
     the ones people get wrong.
   * Sending a full block to `Blocks.UpdateAsync`. It takes an `IUpdateBlock`
